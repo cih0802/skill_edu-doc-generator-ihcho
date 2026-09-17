@@ -4,7 +4,7 @@ step: 98
 type: sql
 summary: 실습에서 만든 모든 Snowflake 객체와 외부(소스 DB) 리소스를 역순으로 삭제해 실습 전 상태로 되돌린다. 비용 경고, 일시 중단 선택지, 상태 전이 절차, 원복 항목, 완료 검증 쿼리, 체크리스트를 포함한다.
 requires: 09_적재결과_검증.sql
-next: 없음 (마지막 문서)
+next: 96_실습후_대조.md
 */
 
 -- =============================================================
@@ -109,9 +109,25 @@ next: 없음 (마지막 문서)
 --    `OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.` 로 정규화되어 있습니다.
 --    ⑥ 에서 그 데이터베이스를 DROP 한 뒤 이 문서를 처음부터 다시 실행하면
 --    **`IF EXISTS` 에도 불구하고** 상위 DB 부재로 실패합니다.
---    → 부분 정리 후 재개할 때는 **이미 끝난 절을 건너뛰십시오.**
---    → 실습을 완주해 정리를 수행했다면, **곧바로 한 번 더 실행**해
---      어느 구문이 재실행 안전하지 않은지 확인하는 것이 좋습니다.
+--
+--    실측 근거(2026-09-17, EDU-02 자료에서 같은 구조를 2회 실행해 확인):
+--      DROP DATABASE 이후 `ALTER TASK IF EXISTS <DB>.<SCH>.<OBJ> SUSPEND` 가
+--      "Database '<DB>' does not exist or not authorized." 로 실패했습니다.
+--      `IF EXISTS` 는 **그 객체 자체**의 부재만 처리하며, 상위 컨테이너가
+--      없으면 객체 존재를 보기 전에 **이름 해석 단계에서** 실패합니다.
+--
+-- 🔴 2026-09-17 정정 — 산문 안내에서 **방어 블록 코드**로 바꿨습니다
+--    이전 판은 "이미 끝난 절을 건너뛰십시오" 라는 안내만 두었습니다.
+--    안내는 스크립트로 일괄 실행하는 사용자를 보호하지 못하므로,
+--    아래 PART C-1 / C-2 / C-4 에 **상위 DB 존재 확인 블록**을 넣었습니다.
+--    DB 가 이미 없으면 각 절이 '건너뜁니다' 를 반환하고 정상 종료합니다.
+--
+--    이 결함은 이 자료의 8차 검토 이력에 이미 기록되어 있었으나
+--    **조치되지 않은 상태로 남아 있었습니다.** 이번에 실제로 고쳤습니다.
+--
+-- 💡 검증 방법: 실습을 완주해 정리를 수행했다면 **곧바로 한 번 더 실행**해
+--    2회차가 오류 없이 끝나는지 확인하십시오. 1회 성공은 재실행 안전성의
+--    근거가 아닙니다.
 
 
 -- =============================================================
@@ -145,27 +161,53 @@ SHOW EXTERNAL ACCESS INTEGRATIONS LIKE 'PG_SOURCE_%';
 -- =============================================================
 -- PART C-1. ① 커넥터 정리
 -- =============================================================
+-- 🔴 아래 구문은 모두 `OPENFLOW_EDU_DB.` 로 시작하는 정규화된 이름입니다.
+--    2회차 실행(= DB 를 이미 지운 뒤)을 위해 방어 블록으로 감쌌습니다.
+--    DB 가 없으면 '건너뜁니다' 를 반환하고 정상 종료합니다.
+--
 -- USE ROLE OPENFLOW_EDU_DE_RL;
 --
--- ALTER OPENFLOW CONNECTOR
---   OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR STOP;
--- SELECT SYSTEM$WAIT_FOR_OPENFLOW_CONNECTOR_STATUS(600, 'STOPPED',
---   'OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR');
+-- EXECUTE IMMEDIATE $$
+-- DECLARE
+--     v_db_count INTEGER;
+--     rs RESULTSET;
+-- BEGIN
+--     -- ACCOUNT_USAGE / INFORMATION_SCHEMA 뷰 존재를 가정하지 않고 SHOW 로 확인합니다
+--     rs := (SHOW DATABASES LIKE 'OPENFLOW_EDU_DB');
+--     SELECT COUNT(*) INTO v_db_count FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
 --
--- ALTER OPENFLOW CONNECTOR
---   OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR TERMINATE;
--- SELECT SYSTEM$WAIT_FOR_OPENFLOW_CONNECTOR_STATUS(600, 'DELETED',
---   'OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR');
+--     IF (v_db_count = 0) THEN
+--         RETURN 'OPENFLOW_EDU_DB 가 이미 없습니다. 커넥터 정리 절을 건너뜁니다.';
+--     END IF;
 --
--- DROP OPENFLOW CONNECTOR IF EXISTS
---   OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR;
+--     ALTER OPENFLOW CONNECTOR
+--       OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR STOP;
+--     SELECT SYSTEM$WAIT_FOR_OPENFLOW_CONNECTOR_STATUS(600, 'STOPPED',
+--       'OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR');
 --
+--     ALTER OPENFLOW CONNECTOR
+--       OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR TERMINATE;
+--     SELECT SYSTEM$WAIT_FOR_OPENFLOW_CONNECTOR_STATUS(600, 'DELETED',
+--       'OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR');
+--
+--     DROP OPENFLOW CONNECTOR IF EXISTS
+--       OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR;
+--
+--     RETURN '커넥터 정리 완료';
+-- END;
+-- $$;
+--
+-- -- 정리 확인 (DB 가 있을 때만 의미가 있습니다)
 -- SHOW OPENFLOW CONNECTORS IN SCHEMA OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH;
 
 -- 💡 TERMINATE 는 DELETED 상태로 보내고, DROP 이 객체 자체를 제거합니다.
 --    Openflow UI 의 Delete = TERMINATE, Drop = DROP 입니다.
 -- ❗ 실패 시 확인: 커넥터가 STARTING/STOPPING 등 전이 상태이면 명령이
 --    거부됩니다. WAIT 함수로 안정 상태를 확인한 뒤 재시도하세요.
+-- ⚠️ 미검증: 이 블록의 커넥터 구문은 트라이얼 계정에서 커넥터를 만들 수
+--    없어(05_ EAI 차단) 실행 검증되지 않았습니다. 방어 블록의 골격
+--    (SHOW DATABASES → RESULT_SCAN → 조건 반환)은 EDU-02 에서 DB 부재
+--    상태로 실제 실행해 '건너뜁니다' 반환을 확인했습니다.
 
 
 -- =============================================================
@@ -237,30 +279,54 @@ SHOW EXTERNAL ACCESS INTEGRATIONS LIKE 'PG_SOURCE_%';
 -- =============================================================
 -- PART C-4. ⑤ EAI / Network Rule / Secret / Stage 정리
 -- =============================================================
+-- 🔴 계정 레벨 객체(EAI)와 스키마 레벨 객체(Network Rule / Secret / Stage)를
+--    분리했습니다. EAI 는 DB 와 무관하므로 방어 블록 밖에 둡니다.
+--
 -- USE ROLE OPENFLOW_EDU_ADMIN_RL;
 --
--- -- EAI 는 계정 레벨 객체입니다. 놓치면 계정에 영구히 남습니다.
--- DROP INTEGRATION  IF EXISTS PG_SOURCE_EAI;
--- DROP NETWORK RULE IF EXISTS OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_SOURCE_NETWORK_RULE;
--- DROP SECRET       IF EXISTS OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_SOURCE_SECRET;
+-- -- (a) EAI — 계정 레벨. 놓치면 계정에 영구히 남습니다. DB 부재와 무관합니다.
+-- DROP INTEGRATION IF EXISTS PG_SOURCE_EAI;
 --
--- -- config.json 편집용 스테이지 (07번 문서에서 생성)
--- DROP STAGE IF EXISTS
---   OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.OPENFLOW_CONFIG_STAGE_OPENFLOW_EDU_DE_RL;
+-- -- (b) 스키마 레벨 3종 — 상위 DB 존재를 먼저 확인합니다 (2회차 실행 방어)
+-- EXECUTE IMMEDIATE $$
+-- DECLARE
+--     v_db_count INTEGER;
+--     rs RESULTSET;
+-- BEGIN
+--     rs := (SHOW DATABASES LIKE 'OPENFLOW_EDU_DB');
+--     SELECT COUNT(*) INTO v_db_count FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
+--
+--     IF (v_db_count = 0) THEN
+--         RETURN 'OPENFLOW_EDU_DB 가 이미 없습니다. 스키마 레벨 객체 정리를 건너뜁니다.';
+--     END IF;
+--
+--     DROP NETWORK RULE IF EXISTS
+--       OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_SOURCE_NETWORK_RULE;
+--     DROP SECRET IF EXISTS
+--       OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_SOURCE_SECRET;
+--     -- config.json 편집용 스테이지 (07번 문서에서 생성)
+--     DROP STAGE IF EXISTS
+--       OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.OPENFLOW_CONFIG_STAGE_OPENFLOW_EDU_DE_RL;
+--
+--     RETURN 'Network Rule / Secret / Stage 정리 완료';
+-- END;
+-- $$;
 
 -- ❗ 실패 시 확인: DROP INTEGRATION 이 실패하면 Runtime 이 아직 EAI 를
 --    참조하고 있습니다. PART C-2 (a) 를 먼저 수행하세요.
 --
 -- 🔴 재실행 주의 — `IF EXISTS` 는 상위 데이터베이스 부재를 막아주지 않습니다
 --    OPENFLOW_EDU_DB 를 이미 DROP 한 뒤(PART C-5) 이 절을 다시 실행하면
---    스키마 레벨 구문 3개(Network Rule / Secret / Stage)가 다음으로 실패합니다.
+--    스키마 레벨 구문 3개(Network Rule / Secret / Stage)는 원래 다음으로
+--    실패했습니다.
 --      Database 'OPENFLOW_EDU_DB' does not exist or not authorized.
 --    `IF EXISTS` 는 **그 객체 자체**의 부재만 처리하며, 정규화된 이름의
 --    상위 컨테이너가 없으면 이름 해석 단계에서 실패합니다.
---    → 이미 PART C-5 를 수행했다면 **이 절의 스키마 레벨 3개 구문은 건너뛰고**
---      계정 레벨인 `DROP INTEGRATION PG_SOURCE_EAI` 만 실행하십시오.
---    → 정리 문서는 재실행되는 것이 정상입니다(중간 실패 후 재시도, 부분 정리 후
---      재개). 순서를 지켜 한 번에 수행하면 이 문제는 발생하지 않습니다.
+--    → **2026-09-17 부터 위 (b) 방어 블록이 이 경우를 처리합니다.**
+--      DB 가 없으면 '건너뜁니다' 를 반환하고 정상 종료하므로, 이제 이 절을
+--      순서와 무관하게 다시 실행해도 안전합니다.
+--    → 계정 레벨인 (a) `DROP INTEGRATION PG_SOURCE_EAI` 는 DB 와 무관하므로
+--      언제든 단독 실행할 수 있습니다.
 -- 💡 위 스키마 레벨 객체(Network Rule / Secret / Stage)는 PART C-5 에서
 --    OPENFLOW_EDU_DB 를 DROP 하면 함께 사라집니다. 명시적으로 적어 둔 것은
 --    DB 를 보존하기로 선택한 경우를 위한 것입니다.
@@ -402,7 +468,18 @@ SHOW DATABASES LIKE 'cdclab';
 -- =============================================================
 -- PART E. 정리 완료 검증 — "삭제했다" 가 아니라 "없음을 확인했다"
 -- =============================================================
--- 02번 문서 STEP 0-6 의 사전 스냅샷과 대조해 차이가 없어야 합니다.
+-- 🔴 이 절의 **기록 정본은 `96_실습후_대조.md` 입니다.**
+--    아래 쿼리는 정리 직후 이 스크립트 안에서 바로 확인할 수 있도록 둔 것이고,
+--    값을 적어 남기는 것은 96_ 의 서식에 하십시오.
+--    두 곳의 쿼리가 어긋나면 **96_ 을 기준으로 맞춥니다.**
+--    (같은 쿼리를 두 문서에 복제해 두면 한쪽만 고쳐져 갈라지기 때문입니다.)
+--
+--    대조 기준값은 `95_실습전_기준선.md` 에 기록해 두었어야 합니다.
+--    (`02_` STEP 0-6 의 스냅샷과 같은 쿼리입니다. 어느 쪽으로 기록했든 무관합니다.)
+--
+-- 🔴 96_ 에는 이 절에 없는 항목이 두 개 더 있습니다. 반드시 그쪽도 수행하십시오.
+--      · §5 소스 DB(복제 슬롯·binlog) 원복 확인 — 방치 시 실질 피해가 가장 큽니다
+--      · §6 이 문서를 **2회차 실행**해 재실행 안전성 확인 — 지금만 가능합니다
 
 USE ROLE ACCOUNTADMIN;
 

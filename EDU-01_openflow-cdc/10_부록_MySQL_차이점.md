@@ -312,4 +312,69 @@ PostgreSQL 측 대응 제약:
 
 ---
 
+
+---
+
+## 🧹 리소스 정리 — MySQL 경로로 실습했다면
+
+> 🔴 **이 절은 2026-09-17 에 추가되었습니다.** 이 문서는 MySQL 소스에
+> **사용자·권한·binlog 설정을 만들도록 안내하면서 정리 절차가 없었습니다.**
+> Snowflake 쪽 정리(`98_`)만 수행하면 **소스 MySQL 에 실습 잔여물이 남습니다.**
+
+Snowflake 쪽 객체는 `98_리소스정리.sql` 이 정본입니다. 아래는 **소스 MySQL 전용**입니다.
+`98_` PART D-2 와 같은 내용이며, 어느 쪽을 실행해도 됩니다.
+
+### (a) 계속 누적되는 것부터 — 우선순위 1
+
+```sql
+-- 이 실습이 만든 복제 사용자를 제거합니다.
+-- 남겨 두면 불필요한 접근 경로가 유지되고, 복제 슬롯 성격의 자원이
+-- binlog 보존을 붙잡을 수 있습니다.
+DROP USER IF EXISTS 'openflow_repl'@'%';
+FLUSH PRIVILEGES;
+```
+
+### (b) 실습용 스키마·데이터
+
+```sql
+-- ⚠️ 이 스키마에 실습 외 데이터를 넣었다면 실행하지 마십시오.
+DROP DATABASE IF EXISTS cdclab;
+```
+
+### (c) 서버 설정 원복 — 🔴 재시작이 필요할 수 있습니다
+
+`binlog_format` 등은 `DROP` 으로 되돌아가지 않는 **설정 변경**입니다.
+
+```sql
+-- 실습 전 값을 먼저 확인해 기록해 두었어야 합니다.
+SHOW VARIABLES LIKE 'binlog_format';
+SHOW VARIABLES LIKE 'binlog_row_image';
+SHOW VARIABLES LIKE 'log_bin';
+```
+
+| 항목 | 실습 전 값 (기록) | 원복 방법 |
+| :--- | :--- | :--- |
+| `binlog_format` | `____________` | 실습 전 값으로 `SET GLOBAL binlog_format = <원래 값>;` |
+| `binlog_row_image` | `____________` | 같은 방식 |
+| `log_bin` | `____________` | my.cnf 수정 + **서버 재시작 필요** |
+
+> 🔴 **실습 전 값을 기록해 두지 않았다면 원복할 수 없습니다.**
+> `binlog_format` 은 MySQL 8.0 기준 기본값이 `ROW` 이므로 이미 `ROW` 였다면
+> 변경 자체가 불필요했고 원복할 것도 없습니다. 값이 달랐다면
+> 기록해 둔 값으로 되돌리십시오. `my.cnf` 에 영구 설정을 넣었다면
+> 그 줄을 제거하고 재시작해야 합니다.
+
+### (d) 정리 확인
+
+```sql
+SELECT user, host FROM mysql.user WHERE user = 'openflow_repl';   -- 0행이어야 합니다
+SHOW DATABASES LIKE 'cdclab';                                      -- 0행이어야 합니다
+```
+
+- 남은 복제 사용자: `______` (없어야 합니다)
+- 남은 실습 스키마: `______` (없어야 합니다)
+- `binlog_format` 현재 값: `______` (실습 전 기록과 같아야 합니다)
+
+---
+
 **다음 문서**: `11_트러블슈팅.md` (참고) → `98_리소스정리.sql` (실습 종료 시 필수)

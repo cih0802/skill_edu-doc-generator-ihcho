@@ -153,3 +153,32 @@ LIMIT 50;
 -- [ ] START 후 status = RUNNING 이다
 --
 -- 다음 문서: 09_적재결과_검증.sql
+
+
+-- =============================================================
+-- 🧹 리소스 정리 — 이 문서까지 진행한 뒤 중단하는 경우
+-- =============================================================
+-- 이 문서는 새 객체를 만들지 않습니다. **커넥터의 상태만 바꿉니다**
+-- (COMMIT → VALIDATE → START). 따라서 삭제할 객체는 없지만,
+-- START 한 커넥터는 계속 실행되며 Runtime 크레딧을 소비합니다.
+--
+-- 🔴 여기서 중단한다면 최소한 커넥터를 멈추십시오.
+--    START 상태를 그대로 두면 소스 DB 의 복제 슬롯도 계속 소비됩니다.
+--
+-- USE ROLE OPENFLOW_EDU_ADMIN_RL;
+--
+-- -- ① 커넥터 정지 (삭제가 아니라 정지 — 이어서 실습할 수 있습니다)
+-- ALTER OPENFLOW CONNECTOR
+--   OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR STOP;
+-- SELECT SYSTEM$WAIT_FOR_OPENFLOW_CONNECTOR_STATUS(
+--          600, 'STOPPED',
+--          'OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR');
+--
+-- -- ② 크레딧까지 멈추려면 Runtime 도 SUSPEND (삭제 아님)
+-- ALTER OPENFLOW RUNTIME
+--   OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.OPENFLOW_EDU_RUNTIME SUSPEND;
+--
+-- ⚠️ SUSPEND 만으로는 **소스 PostgreSQL 의 복제 슬롯이 살아 있습니다.**
+--    WAL 이 계속 축적되어 소스 디스크가 찰 수 있습니다.
+--    완전히 끝낼 것이라면 98_리소스정리.sql PART D (소스 정리) 까지
+--    수행하십시오. 전체 정리는 98_ 이 정본입니다.

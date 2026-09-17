@@ -3,7 +3,7 @@ title: 사전 준비 및 권한 구성
 step: 02
 type: sql
 summary: Openflow Gen 2 사용 가능 여부 게이트 확인 후, Role 3종(admin/DE/execute-as), 인프라 DB/스키마, Warehouse, 대상 DB, Event Table을 생성한다.
-requires: 없음
+requires: 95_실습전_기준선.md
 next: 03_openflow_배포_및_런타임_생성.sql
 */
 
@@ -83,8 +83,14 @@ SHOW OPENFLOW DEPLOYMENTS;
 -- =============================================================
 -- STEP 0-6. 사전 스냅샷 — 실습 전 상태 기록 (⚠️ 건너뛰지 마세요)
 -- =============================================================
+-- 🔴 이 절은 **`95_실습전_기준선.md` 와 같은 내용**입니다.
+--    어느 쪽으로 기록해도 되지만, 분량이 큰 이 스크립트 중간에서
+--    스크롤로 지나치기 쉬우므로 **`95_` 를 먼저 수행하는 것을 권합니다.**
+--    (기록 서식이 표로 정리되어 있고, 소스 DB 사전 상태 항목도 포함됩니다.)
+--    이 절을 이미 `95_` 로 수행했다면 그대로 다음 STEP 으로 넘어가십시오.
+--
 -- 이 실습의 목표 중 하나는 **실습 전후로 계정 상태가 동일한 것**입니다.
--- 정리(98번 문서) 후에 아래 결과와 대조해 원상복구를 증명합니다.
+-- 정리(98번 문서) 후 `96_실습후_대조.md` 에서 아래 결과와 대조해 원상복구를 증명합니다.
 -- 모두 조회 전용이므로 계정을 변경하지 않습니다.
 --
 -- 👉 각 쿼리 결과를 캡처하거나 텍스트로 저장해 두세요.
@@ -193,8 +199,22 @@ USE ROLE ACCOUNTADMIN;
 GRANT CREATE OPENFLOW DEPLOYMENT ON ACCOUNT TO ROLE OPENFLOW_EDU_ADMIN_RL;
 GRANT CREATE DATABASE            ON ACCOUNT TO ROLE OPENFLOW_EDU_ADMIN_RL;
 GRANT CREATE INTEGRATION         ON ACCOUNT TO ROLE OPENFLOW_EDU_ADMIN_RL;
--- Snowflake 배포(SPCS) 전용
-GRANT CREATE COMPUTE POOL        ON ACCOUNT TO ROLE OPENFLOW_EDU_ADMIN_RL;
+
+-- 🔴 2026-09-17 정정 — CREATE COMPUTE POOL 부여를 제거했습니다
+--    이전 판은 아래 구문을 "Snowflake 배포(SPCS) 전용" 이라는 주석과 함께
+--    부여하고 있었습니다.
+--      GRANT CREATE COMPUTE POOL ON ACCOUNT TO ROLE OPENFLOW_EDU_ADMIN_RL;
+--
+--    그런데 이 실습은 **Compute Pool 을 하나도 만들지 않습니다.**
+--    `DEPLOYMENT_TYPE = SNOWFLAKE` 인 Gen 2 배포는 Snowflake 가 컴퓨트를
+--    관리하므로 실습자가 Compute Pool 을 직접 생성할 일이 없습니다.
+--    · 최소 권한 원칙 위반 — 쓰지 않는 계정 레벨 권한을 위임하고 있었습니다
+--    · 객체 대장에도 등재되지 않아 추적 대상에서 빠져 있었습니다
+--
+--    BYOC(Bring Your Own Cloud) 배포로 확장한다면 그때 필요할 수 있습니다.
+--    필요해지는 시점에 아래 주석을 해제하고, **01_ 객체 대장의 계정 레벨
+--    권한 항목에 함께 등재하십시오.**
+-- GRANT CREATE COMPUTE POOL ON ACCOUNT TO ROLE OPENFLOW_EDU_ADMIN_RL;
 
 -- 검증
 SHOW GRANTS TO ROLE OPENFLOW_EDU_ADMIN_RL;

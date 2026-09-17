@@ -8,16 +8,33 @@ next: 03_문서스테이지_및_디렉터리테이블.sql
 */
 
 -- ==============================================================================
--- 검증 상태 (2026-09-16, 계정 LJ20513 / AWS_AP_NORTHEAST_1 / Enterprise, **실습 완주**):
---   ✅ [0] 게이트 전체 — 실제 실행. CORTEX_ENABLED_CROSS_REGION=ANY_REGION,
---      AI_SETTINGS 미설정, SNOWFLAKE.CORTEX_USER 데이터베이스 롤 존재 확인
---   ✅ [1] 사전 스냅샷 / [2] 접두사 충돌 검사 — 실제 실행. 충돌 0건
---   ✅ [3][4][5] WH / DB / 6대 스키마 / Role 2종 / 역할 계층 — 실제 실행 검증 완료
---   ✅ [6] GRANT OWNERSHIP ... COPY CURRENT GRANTS 3건 — 실제 실행 검증 완료.
---      이 소유권 이전이 08_ Cortex Search 의 변경추적 자동 활성화를 가능하게 함(실증)
---   ✅ [7] 권한 부여 전체(계정 레벨 EXECUTE TASK 포함) — 실제 실행 검증 완료
---   ✅ [8] 검증 쿼리 — 실제 실행. LAB_SCHEMA_COUNT=6, 태그된 Role 2행
---   ✅ 98_ 정리 후 기준선 복귀 — 실제 실행 검증 완료 (역할 7 / DB 5 / 태그 잔여물 0)
+-- 검증 상태
+--
+-- [2026-09-17 재검증 — 모델 수명 게이트 [0.6] 신설]
+--   계정 LJ20513 / AWS_AP_NORTHEAST_1 / Enterprise, 실습 완주
+--   ✅ [0.6-a] 모델 수명 게이트 — **실제 실행 검증 완료.**
+--      SHOW CORTEX BASE MODELS + RESULT_SCAN 조합이 동작하며 실제 출력:
+--        CLAUDE-HAIKU-4-5              | GA | legacy_date NULL | ✅ 사용 가능
+--        SNOWFLAKE-ARCTIC-EMBED-L-V2.0 | GA | legacy_date NULL | ✅ 사용 가능
+--   ✅ [0.6-b] GA 대체 후보 조회 — 실제 실행 검증 완료
+--      arctic-embed-l-v2.0 의 in_region_availability 에 AWS_AP_NORTHEAST_1 이
+--      포함되어 크로스 리전 없이 사용 가능함을 확인
+--   🔴 이 게이트를 새로 넣은 이유: 이전 판이 기본 모델로 쓰던 llama3.1-70b 가
+--      LEGACY(legacy_date 2026-08-12, 이미 경과) 상태였습니다. 게이트가 없으면
+--      학습자가 09_ 에서 원인을 모른 채 막힙니다
+--   ✅ [3][4][5][6][7] WH / DB / 6대 스키마 / Role 2종 / 소유권 이전 / 권한 부여
+--      — 실제 실행 재검증 완료
+--   ✅ 98_ 정리 후 잔여물 0 — 실제 실행. SHOW ... LIKE 'KSM_CHATBOT%' 3종 모두 0행
+--
+-- [이전 회차(2026-09-16) 검증 — 그대로 유효]
+--   ✅ [0.2][0.3] CORTEX_ENABLED_CROSS_REGION=ANY_REGION, AI_SETTINGS 미설정 확인
+--   ✅ [0.5] SNOWFLAKE.CORTEX_USER 데이터베이스 롤 존재 확인
+--   ✅ [1] 사전 스냅샷 / [2] 접두사 충돌 검사 — 충돌 0건
+--   ✅ [6] GRANT OWNERSHIP ... COPY CURRENT GRANTS 가 08_ Cortex Search 의
+--      변경추적 자동 활성화를 가능하게 함(실증)
+--   ✅ [8] 검증 쿼리 — LAB_SCHEMA_COUNT=6, 태그된 Role 2행
+--
+-- ⚠️ [0.4] Edition 확인은 SQL 로 불가하므로 Snowsight 수동 확인 항목입니다
 -- ==============================================================================
 -- ==============================================================================
 -- ⚙️ 설정값 — 이 문서의 하드코딩 값은 여기에 집약되어 있습니다
@@ -92,6 +109,50 @@ SELECT "name"
 FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
 WHERE "name" = 'CORTEX_USER';
 --   결과가 없으면 Cortex 기능이 비활성화된 계정입니다. 실습을 진행할 수 없습니다.
+
+-- 0.6 🔴🔴 모델 수명(lifecycle) 게이트 — 건너뛰지 마십시오 🔴🔴
+--     Cortex 모델은 GA → LEGACY → EOL 로 폐기됩니다.
+--     **LEGACY 날짜가 지난 모델은, 그 직전 30일 내에 그 모델을 쓴 적이 없는
+--     계정에서는 선택 자체가 불가능합니다.** 즉 교육자료에 모델명을 박아 두면
+--     시간이 지나 실습이 실패합니다. 이 게이트가 그것을 미리 잡습니다.
+--
+--     실측 사례(2026-09-17, 계정 LJ20513): 이 자료의 이전 판이 기본 모델로 쓰던
+--     `llama3.1-70b` 는 lifecycle_status = LEGACY, legacy_date = 2026-08-12(경과),
+--     eol_date = No sooner than 2026-10-14 상태였습니다. 그대로 두면 신규 학습자는
+--     09_ 에서 막힙니다. 그래서 `claude-haiku-4-5` 로 교체했습니다.
+
+-- 0.6-a 이 실습이 쓰는 두 모델의 수명 상태를 확인합니다
+SHOW CORTEX BASE MODELS;
+
+SELECT "name", "lifecycle_status", "legacy_date", "eol_date",
+       CASE WHEN "lifecycle_status" = 'GA'     THEN '✅ 사용 가능'
+            WHEN "lifecycle_status" = 'LEGACY' THEN '⚠️ LEGACY — 교체를 권합니다'
+            WHEN "lifecycle_status" = 'EOL'    THEN '🔴 EOL — 사용 불가. 반드시 교체'
+            ELSE '⚠️ 확인 필요 (' || COALESCE("lifecycle_status", 'NULL') || ')'
+       END AS GATE_RESULT
+FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+WHERE UPPER("name") IN ('CLAUDE-HAIKU-4-5', 'SNOWFLAKE-ARCTIC-EMBED-L-V2.0');
+--   LLM (claude-haiku-4-5)          상태: ____________  legacy_date: __________
+--   임베딩 (arctic-embed-l-v2.0)     상태: ____________  legacy_date: __________
+--
+--   🔴 GA 가 아니면 아래처럼 대체 모델을 고른 뒤 두 곳을 바꾸십시오.
+--      · LLM     → 09_ 의 PROMPT_GUARD_CONFIG.DEFAULT_MODEL 행만 UPDATE
+--                  (프로시저 재배포 불필요)
+--      · 임베딩   → 08_ 의 EMBEDDING_MODEL. 이미 서비스를 만들었다면
+--                  CREATE OR REPLACE 로 인덱스를 다시 빌드해야 합니다(크레딧 재발생)
+
+-- 0.6-b GA 상태인 대체 후보를 직접 찾습니다
+SHOW CORTEX BASE MODELS;
+
+SELECT "name", "lifecycle_status", "in_region_availability", "cross_region_availability"
+FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+WHERE "lifecycle_status" = 'GA'
+ORDER BY "name";
+--   🔴 임베딩 모델을 바꿀 때는 **언어 지원**을 반드시 확인하십시오.
+--      이 실습의 문서·질의는 전부 한국어이므로 Multilingual 모델이어야 합니다.
+--      English-only 모델을 쓰면 오류 없이 검색 품질만 나빠집니다(08_ 상단 표 참고).
+--   ⚠️ in_region_availability 에 현재 리전이 없으면 크로스 리전 추론이 필요합니다
+--      (0.2 게이트의 CORTEX_ENABLED_CROSS_REGION 값을 함께 보십시오).
 
 
 -- ##############################################################################

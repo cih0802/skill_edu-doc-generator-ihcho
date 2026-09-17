@@ -246,7 +246,15 @@ ORDER BY 2 DESC;
 -- [ ] PHASE 5: 소스와 대상의 행 수·값이 일치한다
 -- [ ] PHASE 6: 커넥터가 RUNNING 이고 ERROR 로그가 없다
 --
--- 🎉 여기까지 통과하면 Openflow Gen 2 CDC 파이프라인 구축을 완료한 것입니다.
+-- 🎉 여기까지 통과하면 Openflow Gen 2 CDC 파이프라인이 **이 계정에서**
+--    동작하는 것을 확인한 것입니다.
+--
+-- 🔴 다만 이 체크리스트를 실제로 통과할 수 있는 계정 조건을 먼저 확인하십시오.
+--    트라이얼 계정에서는 `05_` 의 External Access Integration 이 차단되어
+--    (오류 원문: External access is not supported for trial accounts.)
+--    이 문서의 PHASE 1~6 에 **도달할 수 없습니다.**
+--    자세한 내용은 01_ 사전 준비물과 05_ 상단 경고를 보십시오.
+--    → 즉 위 체크리스트가 비어 있는 것은 자료의 결함이 아니라 계정 제약입니다.
 --
 -- ⚠️ Runtime 은 계속 크레딧을 소비합니다.
 --    실습을 마쳤다면 반드시 98_리소스정리.sql 을 수행하세요.
@@ -255,3 +263,29 @@ ORDER BY 2 DESC;
 -- 다음 문서: 10_부록_MySQL_차이점.md (참고)
 --            11_트러블슈팅.md (참고)
 --            98_리소스정리.sql (필수 — 실습 종료 시)
+
+
+-- =============================================================
+-- 🧹 리소스 정리 — 이 문서까지 진행한 뒤 중단하는 경우
+-- =============================================================
+-- 이 문서는 **검증 쿼리만** 실행합니다. 새로 만드는 Snowflake 객체는 없습니다.
+-- 단, PHASE 2~4 에서 소스 DB 에 넣은 테스트 행이 대상 테이블에 적재됩니다.
+--
+-- 🔴 이 시점에 비용을 쓰고 있는 것은 Runtime 과 커넥터입니다.
+--    중단한다면 아래로 크레딧을 멈추십시오(삭제 아님 — 이어서 실습 가능).
+--
+-- USE ROLE OPENFLOW_EDU_ADMIN_RL;
+--
+-- ALTER OPENFLOW CONNECTOR
+--   OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR STOP;
+-- ALTER OPENFLOW RUNTIME
+--   OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.OPENFLOW_EDU_RUNTIME SUSPEND;
+--
+-- -- 적재 결과 데이터만 지우고 실습을 이어가려면 (선택)
+-- -- ⚠️ 커넥터가 다시 RUNNING 되면 스냅샷/CDC 로 재적재될 수 있습니다.
+-- -- DELETE FROM CDC_LAB_PG_DB.PUBLIC.CUSTOMERS;
+-- -- DELETE FROM CDC_LAB_PG_DB.PUBLIC.ORDERS;
+--
+-- ⚠️ 소스 PostgreSQL 의 복제 슬롯은 위 조치로 사라지지 않습니다.
+--    WAL 축적을 멈추려면 98_리소스정리.sql PART D 를 수행하십시오.
+--    전체 정리는 98_ 이 정본입니다.

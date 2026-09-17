@@ -8,20 +8,42 @@ next: 96_실습후_대조.md
 */
 
 -- ==============================================================================
--- 검증 상태 (2026-09-16, 실습 완주 후 **실제 정리 실행**):
---   ✅ ALTER TASK SUSPEND → DROP CORTEX SEARCH SERVICE → DROP TASK — 실제 실행 검증 완료
+-- 검증 상태
+--
+-- [2026-09-17 재검증 — 🔴 재실행 안전성 결함을 발견해 정정함]
+--   계정 LJ20513, 실습 완주 후 정리를 **2회 연속 실행**해 확인했습니다.
+--
+--   🔴 [발견된 결함] 2회차 실행이 첫 구문부터 실패했다
+--      1회차: 정상 완료
+--      2회차: DB 가 이미 없는 상태에서 아래 두 구문이 실패
+--        ALTER TASK IF EXISTS KSM_CHATBOT_DB.OPS.TASK_INGEST_NEW_DOCUMENTS SUSPEND;
+--        DROP CORTEX SEARCH SERVICE IF EXISTS KSM_CHATBOT_DB.SERVING.KSM_HQ_SEARCH_SERVICE;
+--        오류 원문: Database 'KSM_CHATBOT_DB' does not exist or not authorized.
+--      → `IF EXISTS` 는 객체 자체의 부재만 처리하고 **상위 DB 부재는 막지 못한다.**
+--        이전 판은 이 사실을 서술하지 않았고 방어 코드도 없었다.
+--      정정: ①② 를 상위 DB 존재 확인 방어 블록으로 감쌌다. ③ 에도 경고를 넣었다.
+--   ✅ 방어 블록 자체를 DB 부재 상태에서 실행 검증 — 'KSM_CHATBOT_DB 가 이미
+--      없습니다. 이 절을 건너뜁니다.' 를 반환하고 정상 종료함
+--
+--   ✅ ALTER TASK SUSPEND → DROP CORTEX SEARCH SERVICE — 1회차 실제 실행 검증 완료
 --   ✅ DROP DATABASE / WAREHOUSE / ROLE (역순) — 실제 실행 검증 완료
+--   ✅ 정리 완료 검증 쿼리 — 실제 실행. SHOW DATABASES / WAREHOUSES / ROLES
+--      LIKE 'KSM_CHATBOT%' 모두 **0행**. 잔여물 0 확인
+--   ✅ 실습 검증용으로 만든 한국어 PDF 2건도 스테이지·워크스페이스에서 제거함
+--
+-- [이전 회차(2026-09-16) 검증 — 그대로 유효]
 --   ✅ [7.1] ALTER ACCOUNT UNSET AI_SETTINGS — 실제 실행 검증 완료.
 --      실습 전 미설정이었으므로 UNSET 분기가 적용되어 level 이 (없음) 으로 복귀
 --   ✅ [7.2] CORTEX_ENABLED_CROSS_REGION — 변경하지 않았으므로 원복 불필요(분기 정확)
---   ✅ 정리 완료 검증 쿼리 전체 — 실제 실행 검증 완료.
---      역할 7(실습 0) / DB 5(실습 0) / Cortex Search Service 0 /
---      COMMENT 태그 '[chatbot-prompt-guard]' 잔여물 0
---   ✅ 사전 스냅샷과 대조 — **차이 없음. 왕복 가능성 실증됨**
+--   ✅ 사전 스냅샷과 대조 — 차이 없음
+--
+-- ⚠️ 2026-09-17 재검증에서는 [7] 계정 파라미터 절을 **실행하지 않았습니다.**
+--    이번 개선이 그 절을 건드리지 않았고, 계정 파라미터 변경은 비용과 별개로
+--    사용자 확인이 필요한 변경이기 때문입니다. 위 2026-09-16 결과가 유효합니다.
 --
 -- ⚠️ 이 문서를 실행할 때 세션 웨어하우스가 실습 웨어하우스이면 DROP 이후
 --    "No active warehouse selected" 오류가 난다. USE WAREHOUSE <다른 WH> 로 먼저 전환하십시오.
---    (이번 검증에서 실제로 겪은 오류입니다)
+--    (이전 검증에서 실제로 겪은 오류입니다)
 -- ==============================================================================
 -- ##############################################################################
 -- 💰💰💰 [1] 비용 경고 — 지금 당장 확인할 것 💰💰💰
@@ -141,21 +163,61 @@ SHOW CORTEX SEARCH SERVICES IN ACCOUNT;
 -- 순서를 지키지 않으면 의존성 때문에 실패합니다.
 -- 실행하려면 아래 블록의 주석을 해제하십시오.
 
--- ── ① 실행 중인 것 정지 ─────────────────────────────────────────────────────
--- Task 는 실행 중 상태에서 DROP 하면 진행 중인 실행이 남을 수 있으므로 먼저 SUSPEND 합니다.
--- ALTER TASK IF EXISTS KSM_CHATBOT_DB.OPS.TASK_INGEST_NEW_DOCUMENTS SUSPEND;
+-- ── ①② 실행 중인 것 정지 + 서비스 삭제 ─────────────────────────────────────
+--
+-- 🔴🔴 재실행 안전성 — `IF EXISTS` 만으로는 부족합니다 🔴🔴
+--   이 두 구문은 `KSM_CHATBOT_DB.…` 로 **정규화된 이름**을 씁니다.
+--   `IF EXISTS` 는 **그 객체 자체**의 부재만 처리하며, **상위 데이터베이스가
+--   없으면 객체 존재를 보기 전에 이름 해석 단계에서 실패**합니다.
+--
+--   2026-09-17 계정 LJ20513 실측 — 정리를 2회 실행해 확인했습니다.
+--     1회차: 정상 완료
+--     2회차: 아래 두 구문이 **첫 줄부터 실패**
+--       ALTER TASK IF EXISTS KSM_CHATBOT_DB.OPS.TASK_INGEST_NEW_DOCUMENTS SUSPEND;
+--       DROP CORTEX SEARCH SERVICE IF EXISTS KSM_CHATBOT_DB.SERVING.KSM_HQ_SEARCH_SERVICE;
+--       오류 원문: Database 'KSM_CHATBOT_DB' does not exist or not authorized.
+--
+--   정리 문서는 두 번 실행됩니다(한 구문이 실패해 처음부터 다시 돌리는 경우,
+--   일부만 정리하고 나중에 나머지를 정리하는 경우, 확인 삼아 다시 도는 경우).
+--   그래서 아래처럼 **상위 DB 존재를 먼저 확인하는 방어 블록**으로 감쌌습니다.
+--   이 블록은 DB 가 없으면 '건너뜁니다' 를 반환하고 정상 종료합니다(실측 확인).
+--
+-- 실행하려면 아래 블록의 주석을 해제하십시오.
+--
+-- EXECUTE IMMEDIATE $$
+-- DECLARE
+--     v_db_count INTEGER;
+--     rs RESULTSET;
+-- BEGIN
+--     -- ACCOUNT_USAGE / INFORMATION_SCHEMA 뷰 존재를 가정하지 않고 SHOW 로 확인합니다
+--     rs := (SHOW DATABASES LIKE 'KSM_CHATBOT_DB');
+--     SELECT COUNT(*) INTO v_db_count FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
+--
+--     IF (v_db_count = 0) THEN
+--         RETURN 'KSM_CHATBOT_DB 가 이미 없습니다. 이 절을 건너뜁니다.';
+--     END IF;
+--
+--     -- ① Task 는 실행 중 상태에서 DROP 하면 진행 중 실행이 남을 수 있으므로 먼저 SUSPEND
+--     ALTER TASK IF EXISTS KSM_CHATBOT_DB.OPS.TASK_INGEST_NEW_DOCUMENTS SUSPEND;
+--
+--     -- ② Cortex Search Service 는 DB 삭제로도 사라지지만, 서빙 리소스를 먼저 해제합니다
+--     DROP CORTEX SEARCH SERVICE IF EXISTS KSM_CHATBOT_DB.SERVING.KSM_HQ_SEARCH_SERVICE;
+--
+--     RETURN 'Task 정지 및 Cortex Search Service 삭제 완료';
+-- END;
+-- $$;
 --
 --   ⚠️ 실패 시 확인: Task 가 실행 중이면 SUSPEND 가 즉시 반영되지 않을 수 있습니다.
 --      SHOW TASKS 로 state 가 suspended 가 된 것을 확인한 뒤 다음으로 넘어가십시오.
 
--- ── ② 계정 레벨 서비스 객체 삭제 ────────────────────────────────────────────
--- Cortex Search Service 는 DB 삭제로도 함께 사라지지만, 서빙 리소스를 먼저
--- 해제하기 위해 명시적으로 삭제합니다.
--- DROP CORTEX SEARCH SERVICE IF EXISTS KSM_CHATBOT_DB.SERVING.KSM_HQ_SEARCH_SERVICE;
-
 -- ── ③ 자식 객체 삭제 (선택 — DB 를 지우면 불필요) ───────────────────────────
 -- DB 를 통째로 삭제하면 아래는 실행할 필요가 없습니다.
 -- [3] 에서 DB 보존을 선택한 경우에만 개별 삭제하십시오.
+--
+-- 🔴 아래도 모두 정규화된 이름입니다. **DB 를 이미 지운 뒤에 실행하면
+--    `IF EXISTS` 에도 불구하고 "Database … does not exist" 로 실패합니다.**
+--    DB 를 지웠다면 이 절 전체를 건너뛰십시오(지울 것이 이미 없습니다).
+--    스크립트로 무조건 돌려야 한다면 ①② 와 같은 방어 블록으로 감싸십시오.
 --
 -- DROP TASK      IF EXISTS KSM_CHATBOT_DB.OPS.TASK_INGEST_NEW_DOCUMENTS;
 -- DROP PROCEDURE IF EXISTS KSM_CHATBOT_DB.OPS.SP_RUN_INGEST_CYCLE();

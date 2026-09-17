@@ -53,7 +53,34 @@ CREATE SECURITY INTEGRATION IF NOT EXISTS MOBILE_APP_OAUTH_INTEGRATION
     EXTERNAL_OAUTH_AUDIENCE_LIST = ('https://lj20513.snowflakecomputing.com')
     EXTERNAL_OAUTH_TOKEN_USER_MAPPING_CLAIM = 'sub' -- JWT 토큰 내 사번 Claim 매핑
     EXTERNAL_OAUTH_SNOWFLAKE_USER_MAPPING_ATTRIBUTE = 'LOGIN_NAME'
-    EXTERNAL_OAUTH_ANY_ROLE_MODE = 'ENABLE'
+    -- 🔴🔴 ANY_ROLE_MODE — 최소 권한 원칙과 정면으로 충돌하는 설정입니다 🔴🔴
+    --   공식 문서상 값은 DISABLE | ENABLE | ENABLE_FOR_PRIVILEGE 세 가지입니다.
+    --     · DISABLE (기본값)        — 토큰이 역할을 지정할 수 없다. 사용자
+    --                                 DEFAULT_ROLE 만 사용된다. **가장 안전**
+    --     · ENABLE                  — 클라이언트가 **임의의 역할**을 프라이머리
+    --                                 역할로 지정할 수 있다
+    --     · ENABLE_FOR_PRIVILEGE    — 인티그레이션에 대해 USE_ANY_ROLE 권한을
+    --                                 부여받은 역할에만 허용한다
+    --
+    --   이 자료의 이전 판은 설명 없이 'ENABLE' 을 썼습니다. 최소 권한을
+    --   가르치는 자료가 **가장 느슨한 값을 기본으로 제시**하고 있었습니다.
+    --   실무에 그대로 복사되면 모바일 백엔드가 토큰만으로 역할을 갈아탈 수
+    --   있게 됩니다. (ACCOUNTADMIN·ORGADMIN·GLOBALORGADMIN·SECURITYADMIN 은
+    --   EXTERNAL_OAUTH_BLOCKED_ROLES_LIST 기본값으로 막혀 있지만, 그 외
+    --   모든 역할은 지정 가능합니다.)
+    --
+    --   → 이 실습은 **DISABLE 을 기본으로 바꿨습니다.**
+    --     현장직 사용자는 05_/06_ 에서 DEFAULT_ROLE 이 이미 지정되므로
+    --     실습 시나리오에 ANY_ROLE_MODE 가 필요하지 않습니다.
+    EXTERNAL_OAUTH_ANY_ROLE_MODE = 'DISABLE'
+    --
+    --   ⚠️ 하나의 백엔드가 여러 역할을 전환해야 하는 요건이 실제로 있다면
+    --      ENABLE 대신 아래 조합을 쓰십시오 (설명용 예시 — 실행하지 않습니다).
+    --        EXTERNAL_OAUTH_ANY_ROLE_MODE = 'ENABLE_FOR_PRIVILEGE'
+    --      그리고 허용 역할을 명시적으로 좁힙니다.
+    --        EXTERNAL_OAUTH_ALLOWED_ROLES_LIST = ('KSM_FACTORY_WORKER_ROLE',
+    --                                            'KSM_MOBILE_CHATBOT_SERVICE_ROLE')
+    --      ALLOWED 와 BLOCKED 는 함께 쓸 수 없으므로 하나만 선택합니다.
     COMMENT = '사내 모바일 앱 백엔드 및 현장직 사용자용 External OAuth 연동. 실습용. [sso-user-sync]';
 
 -- 07.2 모바일 BFF 백엔드 서비스 계정 생성 (Key-Pair / Service Account)

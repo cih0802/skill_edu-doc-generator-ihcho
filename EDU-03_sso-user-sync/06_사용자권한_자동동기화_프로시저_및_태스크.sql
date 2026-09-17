@@ -13,7 +13,42 @@ next: 07_모바일앱_External_OAuth_설정.sql
 --       2) 매일 자정(00:00 KST)에 퇴사자/미사용 계정 잔존 여부를 전수 점검하는 자동 감사(Audit) 파이프라인과
 --          Cortex Automation 스케줄링 등록을 수행합니다.
 -- ==============================================================================
--- 검증 상태 (2026-09-16, 계정 LJ20513 / AWS_AP_NORTHEAST_1 / Enterprise 에서 실제 실행):
+-- 검증 상태
+--
+-- [2026-09-17 재검증 — 🔴 결함 3건을 새로 발견해 정정함]
+--   계정 LJ20513 / AWS_AP_NORTHEAST_1 / Enterprise 에서 실제 실행
+--
+--   🔴 [결함 4] SP_AUDIT 에 식별자 검증 게이트가 없었다 → ✅ 정정
+--     06.1 SP_SYNC 에는 RLIKE 게이트가 있는데 06.3 SP_AUDIT 에는 없었다.
+--     같은 자료가 같은 주입 위험에 대해 한쪽만 방어하고 있었다.
+--     정정 검증 — 인사 원장에 주입형 사번을 넣고 CALL 한 실측 결과:
+--       'EMP_F0X3 SET DEFAULT_ROLE=ACCOUNTADMIN --' → REJECTED_UNSAFE_IDENTIFIER
+--                                                     / ACTION_TAKEN = SKIPPED
+--       'OBrien-X' (하이픈)                        → REJECTED_UNSAFE_IDENTIFIER
+--       'EMP_F001','EMP_F002' (정상)               → AUTO_DISABLED
+--     CALL 후 SHOW USERS LIKE 'EMP_F%' → **0행**. 주입으로 생성된 계정 없음
+--
+--   🔴 [결함 5] `SQLERRM` 을 콜론 없이 써서 감사 로그 INSERT 자체가 실패했다 → ✅ 정정
+--     06.1 SP_SYNC 의 핸들러가 `VALUES (..., SQLERRM)` 이었다.
+--     실측 오류: SQL compilation error: invalid identifier 'SQLERRM'
+--     즉 "실패를 감사 로그에 남긴다"는 방어 설계가 **전혀 동작하지 않았다.**
+--     정정: `:SQLERRM` 으로 바인드. 별도 익명 블록으로 검증한 결과
+--     `:SQLERRM` 은 정상 기록됨(예: 'Division by zero' 행이 실제로 INSERT 됨)
+--     ⚠️ 정상 경로 실행으로는 절대 드러나지 않는 결함이다. 핸들러를 실행시켜야 한다
+--
+--   🔴 [결함 6] SP_AUDIT 이 실패를 어디에도 기록하지 않았다 → ✅ 정정
+--     이전 판은 오류를 문자열로 RETURN 만 했다. 자정 자동 실행이므로 아무도
+--     그 문자열을 보지 않는다. 감사 테이블 INSERT 를 추가했다
+--
+--   ⚠️ [발견된 사각지대 — 정정 대상이 아니라 한계] EXCEPTION 핸들러가
+--     `DECLARE` 절 커서의 테이블 부재를 잡지 못한다. 실측: HR_EMPLOYEE_MASTER 를
+--     이름 변경한 뒤 CALL → 'Table … does not exist' 가 그대로 올라오고
+--     감사 테이블 FAILED 행 **0건**. 문서에 이 사실을 명시했다
+--
+--   ✅ SP_SYNC_HR_EMPLOYEES / SP_AUDIT 재생성 — 실제 실행 검증 완료
+--   ✅ 정리 후 잔여물 0 — SHOW DATABASES/USERS LIKE 패턴 검색으로 확인
+--
+-- [이전 회차(2026-09-16) 검증 — 그대로 유효]
 --   ✅ SP_SYNC_HR_EMPLOYEES(정정형) 생성 및 CALL — 실제 실행 검증 완료
 --      1회차: '스트림 3행 소비 / 직원 3명 처리 / 0명 보류', 사용자 3명 생성
 --   ✅ 스트림 소비로 재실행이 차단되는 설계 — 실제 실행 검증 완료
@@ -26,16 +61,13 @@ next: 07_모바일앱_External_OAuth_설정.sql
 --      EMP_F001 → RESIGNED : DISABLE_USER_OFFBOARDING (disabled = true)
 --      EMP_F002 → 부서만 변경(ACTIVE 유지) : SYNC_ACTIVE_USER (disabled = false 유지)
 --   ✅ 부서이동이 DISPLAY_NAME 에 반영됨 — 실제 실행 검증 완료
---      EMP_F002 DEPT_NAME 변경 → DISPLAY_NAME '이공정 (반도체 3공장 검사반)'
---   ✅ 미정의 상태 방어 — 실제 실행 검증 완료
---      EMPLOYMENT_STATUS = 'ON_LEAVE' → SKIPPED_UNKNOWN_STATUS 로 로그 후 보류
+--   ✅ 미정의 상태 방어 — EMPLOYMENT_STATUS = 'ON_LEAVE' → SKIPPED_UNKNOWN_STATUS
 --   ✅ TASK_SYNC_HR_TO_SNOWFLAKE_USERS EXECUTE TASK — 실제 실행 검증 완료
 --      1회차 STATE = SUCCEEDED (EMP_F004 생성, EMP_F005 보류)
 --      2회차 STATE = SKIPPED / ERROR_CODE 0040003
 --      'Conditional expression for task evaluated to false' → 컴퓨트 미사용
---   ✅ SP_AUDIT_DORMANT_AND_RESIGNED_USERS 수정형 — 실제 실행 검증 완료 (1명 조치)
 --
--- 🔴 이전 판에서 발견되어 정정한 결함 (모두 실제 실행으로 재현 및 정정 확인)
+-- 🔴 이전 판에서 발견되어 정정한 결함 1~3 (모두 실제 실행으로 재현 및 정정 확인)
 --
 --   [결함 1] 스트림이 소비되지 않아 태스크가 같은 건을 영구 반복 처리했다 → ✅ 정정
 --     원인. 프로시저가 스트림을 커서 SELECT 로만 읽었다. Snowflake Stream 의 offset 은
@@ -50,17 +82,15 @@ next: 07_모바일앱_External_OAuth_설정.sql
 --     구: INSERT ... VALUES (..., '... (' || r.EMP_NAME || ')', ...)
 --     오류: SQL compilation error: invalid identifier 'R.EMP_NAME'
 --     커서 루프 레코드 필드는 SQL 문 안에서 직접 참조할 수 없다. 지역 변수에 담아
---     `:변수` 로 바인드해야 한다. EXCEPTION 핸들러가 오류를 삼켜 정상 반환처럼 보이고
---     HR_SECURITY_AUDIT_REPORT 는 0행으로 남았다.
---     정정. 아래 06.3 에서 v_emp_name / v_details 지역 변수 바인드.
+--     `:변수` 로 바인드해야 한다.
+--     ⚠️ 위 [결함 5] 는 이것과 **같은 뿌리**의 별개 사례다. 결함 2 를 고칠 때
+--        `SQLERRM` 도 같은 규칙을 따라야 했는데 놓쳤다
 --
 --   [결함 3] 인사 원장에서 행이 DELETE 되면 계정이 차단되지 않았다 → ✅ 정정
 --     원인. 커서가 WHERE METADATA$ACTION = 'INSERT' 로 필터했다. 순수 DELETE 는
 --           스트림에 DELETE 액션 1행만 남기므로 무시되어 계정이 활성 잔존했다.
---     구 판 재현: EMP_F003 DELETE → CALL 후에도 disabled = false.
 --     정정. 아래 06.1 은 버퍼를 EMP_ID 로 집계해 **INSERT 행이 하나도 없는 사번**을
---           하드 삭제(오프보딩)로 판정한다. UPDATE 는 DELETE + INSERT 쌍을 만들므로
---           INSERT 행이 존재해 하드 삭제로 오판되지 않는다.
+--           하드 삭제(오프보딩)로 판정한다.
 --
 -- 📌 스트림 액션 실측 (05_ 에서 확인)
 --     INSERT → INSERT 1행 (ISUPDATE=FALSE)
@@ -70,6 +100,9 @@ next: 07_모바일앱_External_OAuth_설정.sql
 --
 -- ⚠️ 미검증: Cortex Automation(06.5) 등록은 CLI 영역이므로 이 세션 범위 외.
 -- ⚠️ 미검증: 5분 주기 자연 발동. EXECUTE TASK 로 트리거해 확인했다.
+-- ⚠️ 미검증: 2026-09-17 재검증에서는 스트림·태스크 전체 시나리오를 다시 돌리지
+--    않았습니다. 이번 개선이 건드린 것은 두 프로시저의 게이트·핸들러이므로
+--    그 부분만 집중 재검증했습니다. 위 2026-09-16 결과가 유효합니다.
 -- ==============================================================================
 
 USE ROLE ACCOUNTADMIN;
@@ -251,9 +284,24 @@ EXCEPTION
         --    실패를 드러내는 유일한 경로다. 운영에서는 별도 알림을 반드시 추가하십시오.
         --    또한 스트림은 이미 소비되었으므로 실패한 배치는 BATCH_ID 로 버퍼에서
         --    재처리해야 한다 — 스트림에서 다시 읽을 수는 없다.
+        --
+        -- 🔴🔴 2026-09-17 정정 — `SQLERRM` 을 `:SQLERRM` 으로 바꿨습니다 🔴🔴
+        --   이전 판은 `VALUES (..., SQLERRM)` 로 **콜론 없이** 썼습니다.
+        --   Snowflake Scripting 에서 `SQLERRM` 을 **SQL 문 안에서** 쓸 때는
+        --   반드시 바인드해야 합니다. 콜론이 없으면 컬럼 식별자로 해석되어
+        --   실측 오류: SQL compilation error: invalid identifier 'SQLERRM'
+        --
+        --   그 결과 **감사 로그를 남기려는 이 INSERT 자체가 실패**하고,
+        --   핸들러가 처리되지 못한 예외로 터졌습니다.
+        --   즉 "실패를 감사 로그에 남긴다"는 이 자료의 방어 설계가
+        --   **실제로는 전혀 동작하지 않았습니다.**
+        --   ⚠️ 이 결함은 정상 경로 실행만으로는 절대 드러나지 않습니다.
+        --      예외를 **의도적으로 일으켜** 핸들러를 실행해 봐야 발견됩니다.
+        --      (RETURN 문의 `|| SQLERRM` 은 SQL 문이 아니라 식이므로 콜론 없이도
+        --       동작합니다. 그래서 더 헷갈립니다.)
         INSERT INTO KSM_ENTERPRISE_DB.SILVER.HR_SYNC_AUDIT_LOG
             (EMP_ID, ACTION_TYPE, STATUS, ERROR_MESSAGE)
-        VALUES (:v_emp_id, 'ERROR', 'FAILED', SQLERRM);
+        VALUES (:v_emp_id, 'ERROR', 'FAILED', :SQLERRM);
         RETURN '동기화 중 오류 발생 (batch ' || v_batch_id || '): ' || SQLERRM;
 END;
 $$;
@@ -310,29 +358,90 @@ BEGIN
     FOR r IN c_resigned DO
         v_user_name := r.EMP_ID;
         v_emp_name  := r.EMP_NAME;
-        v_details   := '퇴사자 계정 자정 전수 점검 및 차단 완료 (' || v_emp_name || ')';
-        
+
+        -- 🔴🔴 식별자 검증 게이트 — SP_SYNC_HR_EMPLOYEES 와 동일한 방어 🔴🔴
+        --   아래 v_sql 은 EMP_ID 를 **문자열 결합**으로 조립합니다.
+        --   식별자(사용자명) 자리에는 바인드 변수를 쓸 수 없으므로 결합이
+        --   불가피하고, 그 값이 인사 원장 테이블에서 오므로 **주입 경로**입니다.
+        --   원장에 'FOO SET DEFAULT_ROLE=ACCOUNTADMIN --' 같은 값이 들어오면
+        --   의도하지 않은 DDL 이 실행됩니다.
+        --
+        --   이 게이트가 왜 여기 추가되었는가:
+        --   06.1 의 SP_SYNC_HR_EMPLOYEES 에는 RLIKE 게이트가 있었지만
+        --   이 프로시저에는 **없었습니다.** 같은 자료가 같은 위험에 대해
+        --   한쪽만 방어하고 있었으므로 동일한 게이트를 넣었습니다.
+        IF (NOT RLIKE(v_user_name, '[A-Za-z0-9_]{1,50}')) THEN
+            INSERT INTO KSM_ENTERPRISE_DB.SILVER.HR_SECURITY_AUDIT_REPORT
+                (AUDIT_TYPE, USER_NAME, DETAILS, ACTION_TAKEN)
+            VALUES
+                ('REJECTED_UNSAFE_IDENTIFIER', :v_user_name,
+                 '식별자가 허용 패턴([A-Za-z0-9_]{1,50})을 벗어나 동적 SQL 생성을 거부했습니다.',
+                 'SKIPPED');
+            CONTINUE;
+        END IF;
+
+        v_details   := '퇴사자 계정 자정 전수 점검 및 차단 완료 (' || REPLACE(v_emp_name, '''', '''''') || ')';
+
         -- 강제 비활성화 쿼리 실행
         v_sql := 'ALTER USER IF EXISTS ' || v_user_name || ' SET DISABLED = TRUE, PASSWORD = NULL';
         EXECUTE IMMEDIATE :v_sql;
-        
+
         INSERT INTO KSM_ENTERPRISE_DB.SILVER.HR_SECURITY_AUDIT_REPORT
             (AUDIT_TYPE, USER_NAME, DETAILS, ACTION_TAKEN)
         VALUES
             ('RESIGNED_VERIFICATION', :v_user_name, :v_details, 'AUTO_DISABLED');
-            
+
         v_fixed_count := v_fixed_count + 1;
     END FOR;
     CLOSE c_resigned;
-    
+
     RETURN '자정 계정 보안 감사 완료: 총 ' || v_fixed_count || '명 퇴사/비활성화 상태 검증 및 조치 완료';
 EXCEPTION
     WHEN OTHER THEN
-        -- ⚠️ 이 핸들러가 오류를 삼켜 실패를 정상 반환처럼 보이게 만든다.
-        --    운영에서는 감사 실패 자체를 별도 로그/알림으로 남기십시오.
-        RETURN '자정 보안 감사 중 오류 발생: ' || SQLERRM;
+        -- 🔴 이 핸들러는 오류를 삼켜 실패를 정상 반환처럼 보이게 만듭니다.
+        --    태스크 이력의 STATE = SUCCEEDED 도 신뢰할 수 없게 됩니다.
+        --
+        -- 🔴 정정 내용: 이전 판은 오류를 **문자열로만 반환**하고 어디에도
+        --    기록하지 않았습니다. 자정에 자동 실행되는 태스크이므로
+        --    아무도 그 반환값을 보지 않고, 실패가 완전히 은폐되었습니다.
+        --    (같은 자료의 SP_SYNC_HR_EMPLOYEES 는 감사 로그 INSERT 를 갖고 있었지만,
+        --     그 INSERT 도 `:SQLERRM` 콜론 누락으로 실제로는 실패하고 있었습니다.
+        --     두 프로시저 모두 이번에 정정했습니다.)
+        --    → 실패를 감사 테이블에 남기도록 고쳤습니다.
+        --
+        -- 🔴 `:SQLERRM` 의 콜론은 필수입니다. SQL 문(INSERT) 안에서 콜론 없이 쓰면
+        --    "invalid identifier 'SQLERRM'" 로 이 INSERT 자체가 실패합니다(실측).
+        --    자세한 설명은 06.1 SP_SYNC_HR_EMPLOYEES 의 핸들러 주석 참고.
+        --
+        -- 🔴🔴 이 핸들러의 사각지대 — 실측으로 확인했습니다 🔴🔴
+        --   `EXCEPTION WHEN OTHER` 는 **`BEGIN` 이후에 발생한 오류만** 잡습니다.
+        --   `DECLARE` 절의 커서 정의(`c_resigned CURSOR FOR SELECT … FROM
+        --   HR_EMPLOYEE_MASTER`)가 참조하는 테이블이 없으면, 그 이름 해석은
+        --   `BEGIN` 보다 먼저 일어나므로 **핸들러가 실행되지 않습니다.**
+        --
+        --   실측(2026-09-17): 원본 테이블 이름을 바꾼 뒤 CALL 하면
+        --     SQL compilation error: Table
+        --     'KSM_ENTERPRISE_DB.BRONZE.HR_EMPLOYEE_MASTER' does not exist
+        --   가 그대로 올라오고, 감사 테이블에는 FAILED 행이 **0건**이었습니다.
+        --
+        --   → 따라서 "핸들러가 있으니 실패가 기록된다"고 가정하지 마십시오.
+        --     태스크로 자동 실행할 때는 감사 테이블만 보지 말고
+        --     TASK_HISTORY 의 ERROR_MESSAGE 도 함께 확인해야 합니다(93_ 런북 참고).
+        INSERT INTO KSM_ENTERPRISE_DB.SILVER.HR_SECURITY_AUDIT_REPORT
+            (AUDIT_TYPE, USER_NAME, DETAILS, ACTION_TAKEN)
+        VALUES
+            ('AUDIT_PROCEDURE_ERROR', CURRENT_USER(), :SQLERRM, 'FAILED');
+        RETURN '자정 보안 감사 중 오류 발생 (감사 로그에 기록됨): ' || SQLERRM;
 END;
 $$;
+
+-- 🔴 감사 실패를 놓치지 않으려면 아래 쿼리를 정기적으로 확인하십시오.
+--    반환 메시지나 태스크 STATE 를 근거로 삼지 마십시오.
+-- SELECT * FROM KSM_ENTERPRISE_DB.SILVER.HR_SECURITY_AUDIT_REPORT
+--  WHERE ACTION_TAKEN IN ('FAILED', 'SKIPPED')
+--  ORDER BY REPORTED_AT DESC;
+--    운영에서는 이 조건에 Snowflake ALERT + NOTIFICATION INTEGRATION 을
+--    붙여 실패를 능동적으로 통보받으십시오(93_ 운영 런북 참고).
 
 
 -- ==============================================================================

@@ -216,11 +216,20 @@ DESCRIBE OPENFLOW DEPLOYMENT OPENFLOW_EDU_DEPLOYMENT;
 -- =============================================================
 -- ⚠️ DROP OPENFLOW RUNTIME 만으로는 삭제되지 않습니다.
 --    Gen 2 Runtime 삭제 워크플로: SUSPEND → TERMINATE → DROP
---    전체 절차와 순서는 98번 문서(98_리소스정리.sql) 를 따르세요.
+--    Deployment 삭제 워크플로 : TERMINATE → (안정화 대기) → DROP
+--    전체 절차와 순서는 98번 문서(98_리소스정리.sql) 가 정본입니다.
+--
+-- 🔴 2026-09-17 정정 — 이 절이 98_ 와 어긋나 있었습니다
+--    이전 판은 Runtime 은 SUSPEND → TERMINATE CASCADE → DROP 으로 올바르게
+--    안내하면서, **Deployment 는 `ALTER … TERMINATE` 없이 바로
+--    `DROP OPENFLOW DEPLOYMENT` 를 실행**하게 되어 있었습니다.
+--    같은 자료의 98_ PART C-3 은 TERMINATE 가 선행되어야 한다고 서술하고
+--    있으므로 두 문서가 모순 상태였습니다. Deployment 가 ACTIVE 이면
+--    이 단축 경로는 실패합니다. 아래에 TERMINATE 단계를 추가했습니다.
 --
 -- USE ROLE OPENFLOW_EDU_ADMIN_RL;
 --
--- -- 커넥터까지 한 번에 정리하는 단축 경로
+-- -- ① 커넥터까지 한 번에 정리하는 단축 경로 (Runtime)
 -- ALTER OPENFLOW RUNTIME
 --   OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.OPENFLOW_EDU_RUNTIME SUSPEND;
 -- ALTER OPENFLOW RUNTIME
@@ -228,7 +237,13 @@ DESCRIBE OPENFLOW DEPLOYMENT OPENFLOW_EDU_DEPLOYMENT;
 -- DROP OPENFLOW RUNTIME IF EXISTS
 --   OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.OPENFLOW_EDU_RUNTIME;
 --
+-- -- ② Deployment — TERMINATE 를 먼저 실행해야 합니다 (누락되어 있던 단계)
+-- ALTER OPENFLOW DEPLOYMENT OPENFLOW_EDU_DEPLOYMENT TERMINATE;
+-- SELECT SYSTEM$WAIT_FOR_STABLE_OPENFLOW_DEPLOYMENTS(900, 'OPENFLOW_EDU_DEPLOYMENT');
 -- DROP OPENFLOW DEPLOYMENT IF EXISTS OPENFLOW_EDU_DEPLOYMENT;
+--
+--    ⚠️ 전이 상태(TERMINATING 등)에서는 ALTER/DROP 이 거부됩니다.
+--       위 WAIT 함수로 안정화를 기다린 뒤 DROP 하십시오.
 --
 -- 💡 실습을 이어서 할 예정이라면 삭제하지 않고 SUSPEND 만 해도
 --    크레딧 소비가 멈춥니다 (11번 문서 B-1 선택 1).
