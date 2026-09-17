@@ -26,11 +26,15 @@ Snowflake 환경에서 **SQL 기반으로 직접 실습하고 데이터 적재 �
 ### 작업 공간 스캔 — 발화가 모호할 때의 근거
 
 ```bash
-ls -d /workspace/*/ 2>/dev/null
-ls /workspace/<TOPIC_SLUG>/ 2>/dev/null
+cat "/workspace/00_교육자료_카탈로그.md" 2>/dev/null      # 등록된 교육자료 목록 — 가장 먼저 본다
+ls -d /workspace/EDU-*/ 2>/dev/null
 ```
 
 `01_*.md` 또는 `00_index.md` 를 포함한 폴더는 이 스킬의 산출물로 간주한다.
+카탈로그에 등록되어 있으면 그 자체가 산출물이라는 근거다.
+
+> ⚠️ 카탈로그에 없는데 `EDU-` 접두사 없이 존재하는 폴더는 **구 규칙 산출물**일 수 있다.
+> IMPROVE 대상이 될 수 있으므로 무시하지 않는다.
 
 ### 판정 및 라우팅
 
@@ -53,7 +57,7 @@ ls /workspace/<TOPIC_SLUG>/ 2>/dev/null
 > "`<경로>` 는 이 스킬의 문서 규격(번호 체계·메타 주석·인덱스)을 따르지 않습니다. ① 규격에 맞게 **재구성**하면서 개선할까요? ② 규격은 유지하지 않고 **내용만** 개선할까요?"
 
 ①이면 `improve/SKILL.md` 로 진입해 규격 정렬을 전면 적용한다.
-②면 `improve/SKILL.md` 로 진입하되 구조 결함(`references/quality-bar.md` 의 구조 항목)을 갭 분석에서 제외한다.
+②면 `improve/SKILL.md` 로 진입하되 구조 결함(`references/30_quality-bar.md` 의 구조 항목)을 갭 분석에서 제외한다.
 
 **모드를 추측해 진행하지 않는다.** 판정이 모호하면 멈추고 질문한다.
 **기존 폴더를 확인 없이 덮어쓰지 않는다.**
@@ -84,7 +88,7 @@ ls /workspace/<TOPIC_SLUG>/ 2>/dev/null
 |----|------|
 | `full` | 전체 감사 — 규격 + 정확성 + 정리 + 완결성 (기본값) |
 | `accuracy` | 문법·최신 문서 대조·계정 적합성만 |
-| `teardown` | 정리 요구사항 준수만 — `references/teardown.md` |
+| `teardown` | 정리 요구사항 준수만 — `references/20_teardown-registry.md` · `references/21_teardown-execution.md` |
 | `structure` | 문서 번호·분리 규칙·메타 주석·인덱스만 |
 | `extend` | **학습 범위 확장** — 기존 목표에 없던 내용 추가 |
 | `specific` | `IMPROVE_REQUEST` 에 지목된 부분만 |
@@ -100,40 +104,30 @@ ls /workspace/<TOPIC_SLUG>/ 2>/dev/null
 확장의 추가 의무는 `improve/SKILL.md` 에 있다.
 
 ---
-
----
-
-## 공유 참조 — 필요한 시점에만 로드
+## 조각(shard) 참조 — 필요한 시점에만 로드
 
 서브스킬이 각 단계에서 로드를 지시한다. **라우터 단계에서는 로드하지 않는다.**
+조각은 **의미 단위**로 나뉘어 있으므로, 필요한 조각만 골라 읽는다.
 
-| 참조 | 내용 | 로드 시점 |
+| 조각 | 내용 | 로드 시점 |
 |------|------|-----------|
-| `references/output-contract.md` | 폴더 구조, 문서 번호, 분리 규칙, 메타 주석, 검증 규율 | 문서를 쓰거나 읽기 직전 |
-| `references/teardown.md` | 객체 대장, 사전 스냅샷, `98_` 필수 구성, 안전장치 | 객체 대장 작성 / `98_` 작업 / 정리 갭 분석 시 |
-| `references/quality-bar.md` | 품질 기준 + 심각도 매핑 | 비판적 검토(CREATE) / 갭 분석(IMPROVE) 시 |
+| `references/10_output-contract.md` | 산출물 규격 (Output Contract) | 문서를 쓰거나 읽기 직전 |
+| `references/11_verification.md` | 검증 규율 (Verification Discipline) | 정확성을 주장하거나 검증 상태를 쓸 때 |
+| `references/20_teardown-registry.md` | 정리 준비 — 객체 대장과 사전 스냅샷 | `01_` 객체 대장 작성 / `02_` 스냅샷 작성 시 |
+| `references/21_teardown-execution.md` | 정리 실행 — `98_리소스정리.sql` 구성과 검증 | `98_` 작성 / 정리 갭 분석 시 |
+| `references/30_quality-bar.md` | 품질 기준 (Quality Bar) | 비판적 검토(CREATE) / 갭 분석(IMPROVE) 시 |
 
 ---
 
-## 공통 금지 사항
+## 금지 사항 — 라우팅 단계
 
-모드별 금지 사항은 각 서브스킬에 있다.
+아래는 **분기 판단 자체**를 지배하는 규칙이다.
+실행 시점의 공통 금지 사항(검증 근거·정리·보안·문서 구조 등)과 모드별 금지 사항은
+**각 서브스킬에 함께 실려 있다.** 라우터는 항상 서브스킬로 분기하므로 누락되지 않는다.
 
+**A. 시작 전제 — 임의로 출발하지 않는다**
 - **모드를 추측해 진행하지 않는다**
 - **`GOAL` 또는 `TARGET_FOLDER` 없이 임의로 시작하지 않는다**
-- **검증 단계를 생략하지 않는다**
-- **정리 문서(`98_`) 없이 완료로 보고하지 않는다**
-- **객체 대장에 없는 객체를 실습에서 생성하지 않는다**
-- **사용자가 명시하지 않은 기존 Snowflake 객체를 재사용하거나 변경하지 않는다.** 제품 요구사항 때문에 불가피하게 변경해야 한다면 그것을 **대장 (b) 속성 변경 행으로 등재하고 `references/teardown.md` 의 "속성 변경(Mutation)" 절 3단계(사전 값 기록 → 변경 지점 경고 → `98_` 원복)를 모두 수행한다.** 등재 없이 변경하는 것을 금지한다
-- **`DROP` 만으로 원복되지 않는 변경을 정리 완료로 보고하지 않는다**
-- **계정 기본 객체(`COMPUTE_WH`, `SNOWFLAKE`, 시스템 Role, `PUBLIC` 등)를 삭제하는 구문을 생성하지 않는다**
-- **`DROP` 워크플로를 추측해 기술하지 않는다** — 공식 문서로 확인한다
-- **모델 기억을 근거로 정확성을 주장하지 않는다**
-- **검증하지 않은 구문을 검증된 것처럼 서술하지 않는다**
-- `00_index.md` 를 손으로 작성하지 않는다
-- 폴더 밖에 파일을 흩뿌리지 않는다
-- `98_`, `99_` 를 다른 용도로 쓰지 않는다 (예약 번호)
-- 계획·분석 문서를 별도 파일로 만들지 않는다 (분석은 대화와 `01_` 검토 이력에 남긴다)
 
 ---
 
@@ -149,5 +143,5 @@ ls /workspace/<TOPIC_SLUG>/ 2>/dev/null
 
 | 모드 | 산출물 |
 |------|--------|
-| CREATE | `/workspace/<TOPIC_SLUG>/` 에 `00_`~`99_` 문서 세트 (`create/SKILL.md` 참고) |
+| CREATE | `/workspace/EDU-<NN>_<TOPIC_SLUG>/` 에 `00_`~`99_` 문서 세트 + 카탈로그 등록 (`create/SKILL.md` 참고) |
 | IMPROVE | 승인된 결함이 반영된 기존 문서 + 누락 문서 보완 + 누적된 검토 이력 (`improve/SKILL.md` 참고) |

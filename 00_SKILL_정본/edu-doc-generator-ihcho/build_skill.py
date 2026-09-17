@@ -57,37 +57,73 @@ ROUTER_DESC = (
 # title: 참조 파일의 자기 제목. 원본 장 제목을 그대로 쓰면 "## 4. 정리…" 처럼
 #        원본 좌표가 남아 파일 안에서 번호가 어긋난다.
 #
-# 명세 장 순서는 참조 파일 단위로 인접하게 배치되어 있다.
-#   0·1 → 라우터 | 2·3 → output-contract | 4 → teardown
-#   5 → quality-bar | 6 → create | 7 → improve | 8 → 라우터 + 서브스킬
+# ── 조각(shard) 구성 ──────────────────────────────────────────────
+# 허브(SKILL.md) + 조각(references/) 구조다. 조각 경계는 **의미 이음매**로만
+# 나눈다. 용량 한도는 "여기서 자르라"는 지시가 아니라 **"이 조각에 관심사가
+# 둘 이상 섞였다"는 신호**로 쓴다. 바이트 경계로 이어 쓰면 규칙 하나가
+# 무의미한 지점에서 쪼개져, 모델이 앞 절반만 읽고 판단할 수 있다.
+#
+# 파일명은 `NN_<slug>.md` — 번호는 안정 주소, slug 는 의미다.
+# 번호만 쓰면(0001.md) 모델이 무엇을 로드해야 할지 판단할 수 없다.
+# 이 스킬이 교육자료에 요구하는 명명 규칙과 같은 방식이다.
+#
+#   sections: (lo, hi) 를 주면 그 장의 `### N.lo` ~ `### N.hi` 만 담는다.
+#             생략하면 장 전체.
 REFERENCES = {
-    "output-contract.md": {
-        "chapters": [2, 3],
-        "title": "산출물 규격 및 검증 규율",
+    "10_output-contract.md": {
+        "chapters": [2],
+        "title": "산출물 규격 (Output Contract)",
         "name": "edu-doc-output-contract",
-        "desc": "교육자료 산출물 규격과 검증 규율. 폴더 구조, 문서 번호, 분리 규칙, 메타 주석 포맷, "
-                "근거 우선순위, 실행 vs 컴파일 판단, 미검증 표기 의무. CREATE/IMPROVE 두 모드 공통.",
+        "desc": "교육자료 산출물 규격. 폴더 구조, 워크스페이스 파일 조작 제약, 문서 번호, "
+                "분리 규칙, 메타 주석 포맷, SQL 문서 작성 원칙. CREATE/IMPROVE 두 모드 공통.",
+        "when": "문서를 쓰거나 읽기 직전",
     },
-    "teardown.md": {
+    "11_verification.md": {
+        "chapters": [3],
+        "title": "검증 규율 (Verification Discipline)",
+        "name": "edu-doc-verification",
+        "desc": "교육자료 검증 규율. 근거 우선순위, 실행 vs 컴파일 판단, 실행 승인 범위와 "
+                "예외, 미검증 표기 의무, 총괄 합격 선언 금지.",
+        "when": "정확성을 주장하거나 검증 상태를 쓸 때",
+    },
+    "20_teardown-registry.md": {
         "chapters": [4],
-        "title": "정리(Teardown) 요구사항 — 실습 전후 상태 동일성",
-        "name": "edu-doc-teardown",
-        "desc": "교육자료 정리(Teardown) 요구사항. 왕복 가능성, 객체 대장, 명명 규칙, 사전 스냅샷, "
-                "이중 정리 구조, 98_리소스정리.sql 8개 필수 구성, 안전장치.",
+        "sections": (1, 3),
+        "title": "정리 준비 — 객체 대장과 사전 스냅샷",
+        "name": "edu-doc-teardown-registry",
+        "desc": "실습이 만들고 바꾸는 것을 빠짐없이 추적하는 방법. 객체 대장 3부 구성, "
+                "간접 생성 객체, 속성 변경 원복 3단계, 명명 규칙, 사전 스냅샷.",
+        "when": "`01_` 객체 대장 작성 / `02_` 스냅샷 작성 시",
     },
-    "quality-bar.md": {
+    "21_teardown-execution.md": {
+        "chapters": [4],
+        "sections": (4, 7),
+        "title": "정리 실행 — `98_리소스정리.sql` 구성과 검증",
+        "name": "edu-doc-teardown-execution",
+        "desc": "정리 문서를 실제로 쓰고 검증하는 방법. 이중 정리 구조, 98_리소스정리.sql "
+                "9개 필수 구성(재실행 안전성 포함), 안전장치, 대장과의 1:1 대조.",
+        "when": "`98_` 작성 / 정리 갭 분석 시",
+    },
+    "30_quality-bar.md": {
         "chapters": [5],
         "title": "품질 기준 (Quality Bar)",
         "name": "edu-doc-quality-bar",
-        "desc": "교육자료 품질 기준. 구조/내용/정확성/정리 4개 영역 체크리스트와 "
-                "IMPROVE 갭 분석용 심각도 매핑.",
+        "desc": "교육자료 품질 기준. 구조/내용/정확성/완주와 검증 태도/정리 영역별 "
+                "체크리스트와 IMPROVE 갭 분석용 심각도 매핑.",
+        "when": "비판적 검토(CREATE) / 갭 분석(IMPROVE) 시",
     },
 }
 
-OC = "`../references/output-contract.md`"
-TD = "`../references/teardown.md`"
-QB = "`../references/quality-bar.md`"
-oc, td, qb = (s.replace("../", "") for s in (OC, TD, QB))
+# 조각 경로 상수 — 서브스킬은 `../references/` 로 참조한다
+def _ref(fname: str) -> str:
+    return f"`../references/{fname}`"
+
+OC  = _ref("10_output-contract.md")       # 산출물 규격
+VD  = _ref("11_verification.md")          # 검증 규율
+TDR = _ref("20_teardown-registry.md")     # 정리 준비(대장·스냅샷)
+TDX = _ref("21_teardown-execution.md")    # 정리 실행(98_)
+QB  = _ref("30_quality-bar.md")           # 품질 기준
+oc, vd, tdr, tdx, qb = (x.replace("../", "") for x in (OC, VD, TDR, TDX, QB))
 
 # ── 치환ⓐ: 명세의 이름 기반 참조 → 스킬 파일 경로 ─────────────────
 # 명세는 제품 중립이라 스킬 파일명을 모른다. 여기서 경로를 주입한다.
@@ -108,36 +144,41 @@ SUB_ROUTER: list[tuple[str, str]] = [
      f"②면 `improve/SKILL.md` 로 진입하되 구조 결함({qb} 의 구조 항목)을 갭 분석에서 제외한다."),
     ("확장의 추가 의무는 IMPROVE 모드에 있다.",
      "확장의 추가 의무는 `improve/SKILL.md` 에 있다."),
-    ("| `teardown` | 정리 요구사항 준수만 |", f"| `teardown` | 정리 요구사항 준수만 — {td} |"),
+    ("| `teardown` | 정리 요구사항 준수만 |", f"| `teardown` | 정리 요구사항 준수만 — {tdr} · {tdx} |"),
     # 8장 공통 금지 — 라우터는 참조를 로드하지 않으므로 파일명을 명시한다
     ('그것을 **대장 (b) 속성 변경 행으로 등재하고 "속성 변경(Mutation)" 절의 3단계',
-     f'그것을 **대장 (b) 속성 변경 행으로 등재하고 {td} 의 "속성 변경(Mutation)" 절 3단계'),
+     f'그것을 **대장 (b) 속성 변경 행으로 등재하고 {tdr} 의 "속성 변경(Mutation)" 절 3단계'),
 ]
 
 # 서브스킬(6·7·8장)용 — 두 모드가 공유
 SUB_LEAF: list[tuple[str, str]] = [
     ("모드 판별의 확인 질문으로 돌아간다", "라우터(`SKILL.md`)의 ⓐ 질문으로 돌아간다"),
-    ("- **객체 대장**", f"- **객체 대장** — {TD} 1장"),
-    ("- **명명 규칙**", f"- **명명 규칙** — {TD} 2장"),
+    ("- **객체 대장**", f'- **객체 대장** — {TDR} 의 "객체 대장" 절'),
+    ("- **명명 규칙**", f'- **명명 규칙** — {TDR} 의 "명명 규칙" 절'),
     ("품질 기준으로 초안을 스스로 검토한다. 근거는 검증 규율을 따른다.",
-     f"{QB} 를 기준으로 초안을 스스로 검토한다. 근거는 {OC} 의 검증 규율을 따른다."),
+     f"{QB} 를 기준으로 초안을 스스로 검토한다. 근거는 {VD} 를 따른다."),
     ("- 문서 분리 규칙 적용", f"- 문서 분리 규칙 적용 — {OC}"),
     ("- 모든 파일에 메타 주석 블록 포함", f"- 모든 파일에 메타 주석 블록 포함 — {OC}"),
-    ("- **`02_` 시작부에 사전 스냅샷 배치**", f"- **`02_` 시작부에 사전 스냅샷 배치** — {TD} 3장"),
-    ("- 정리 문서의 8개 필수 구성 요소를 모두 포함", f"- {TD} 5장의 8개 필수 구성 요소를 모두 포함"),
-    ("- 안전장치 적용", f"- {TD} 6장 안전장치 적용"),
-    ("- SQL 문서 작성 원칙 적용", f"- SQL 문서 작성 원칙 적용 — {OC} 5장"),
-    ("검증 규율에 따라 실행/컴파일 검증하고", f"{OC} 의 검증 규율에 따라 실행/컴파일 검증하고"),
-    ("미검증 항목은 미검증 표기 의무에 따라 표기한다.",
-     f"미검증 항목은 {OC} 의 미검증 표기 의무에 따라 표기한다."),
+    ("- **`02_` 시작부에 사전 스냅샷 배치**", f'- **`02_` 시작부에 사전 스냅샷 배치** — {TDR} 의 "사전 스냅샷" 절'),
+    ("- 정리 문서의 9개 필수 구성 요소를 모두 포함", f'- {TDX} 의 "필수 구성" 절 9개 요소를 모두 포함'),
+    ("- 안전장치 적용", f'- {TDX} 의 "안전장치" 절 적용'),
+    ("- SQL 문서 작성 원칙 적용", f'- SQL 문서 작성 원칙 적용 — {OC} 의 "SQL 문서 작성 원칙" 절'),
+    ("검증 규율에 따라 **모든 SQL을 컴파일 검증**하고",
+     f"{VD} 에 따라 **모든 SQL을 컴파일 검증**하고"),
+    ('품질 기준의 "완주 검증" 절에 따라',
+     f'{QB} 의 "완주 검증" 절에 따라'),
+    ('실행으로 확인한 것과 미검증 항목을 미검증 표기 의무에 따라 구분해 적는다.',
+     f'실행으로 확인한 것과 미검증 항목을 {VD} 의 미검증 표기 의무에 따라 구분해 적는다.'),
+    ('품질 기준의 "완주 검증" 절 기준을 따른다.',
+     f'{QB} 의 "완주 검증" 절 기준을 따른다.'),
     ("품질 기준을 체크리스트로 삼아", f"{QB} 를 체크리스트로 삼아"),
-    ("**정확성 판정은 검증 규율을 따른다.**", f"**정확성 판정은 {OC} 의 검증 규율을 따른다.**"),
+    ("**정확성 판정은 검증 규율을 따른다.**", f"**정확성 판정은 {VD} 를 따른다.**"),
     ("- 수정 근거를 반드시 확보한 뒤 고친다 (검증 규율)",
-     f"- 수정 근거를 반드시 확보한 뒤 고친다 ({OC})"),
+     f"- 수정 근거를 반드시 확보한 뒤 고친다 ({VD})"),
     ("- 검증 못 한 것은 미검증으로 표기한다 (미검증 표기 의무)",
-     f"- 검증 못 한 것은 미검증으로 표기한다 ({OC})"),
+     f"- 검증 못 한 것은 미검증으로 표기한다 ({VD})"),
     ("수정한 SQL을 검증 규율에 따라 다시 검증한다.",
-     f"수정한 SQL을 {OC} 의 검증 규율에 따라 다시 검증한다."),
+     f"수정한 SQL을 {VD} 에 따라 다시 검증한다."),
     ("### 문서 추가·삭제·번호 변경 규칙 (STEP I4 공통 규칙)",
      "### 문서 추가·삭제·번호 변경 규칙 (STEP I4 공통)"),
     ("그 번호를 사용한다. 번호 변경 불필요 — 번호는 연속일 필요가 없다",
@@ -151,18 +192,23 @@ SUB_LEAF: list[tuple[str, str]] = [
 LOADS: dict[str, dict[str, list[tuple[str, str]]]] = {
     "create": {
         "### STEP C2. 교육자료 초안 작성 (`01_교육자료_정리본.md`)":
-            [(TD, "객체 대장과 명명 규칙 작성에 필요하다.")],
+            [(TDR, "객체 대장과 명명 규칙 작성에 필요하다.")],
         "### STEP C3. 비판적 검토 및 업데이트 (생략 금지)":
-            [(QB, "검토 기준."), (OC, "검증 규율(근거 우선순위).")],
-        "### STEP C4. 실습 문서 생성 (`02_` ~ `97_`)":
+            [(QB, "검토 기준."), (VD, "근거 우선순위와 실행 vs 컴파일 판단.")],
+        "### STEP C4. 실습 문서 생성 (`02_` ~ `89_`)":
             [(f"{OC} (아직 로드하지 않았다면)", "분리 규칙, 메타 주석, SQL 작성 원칙.")],
+        # 정리 문서를 쓰는 시점에만 98_ 구성 명세를 읽는다 — C2 에서는 필요 없다
+        "### STEP C5. 정리 문서 생성 (`98_리소스정리.sql`) — 생략 금지":
+            [(TDX, "`98_` 9개 필수 구성과 안전장치.")],
     },
     "improve": {
         "### STEP I1. 전체 읽기 (생략 금지)":
             [(OC, "규격 위반을 판별하려면 규격을 알아야 한다.")],
         "### STEP I2. 갭 분석 (Gap Analysis)":
             [(QB, "체크리스트와 심각도 매핑."),
-             (TD, "`IMPROVE_SCOPE` 가 `full` 또는 `teardown` 일 때.")],
+             (VD, "정확성 판정의 근거 규율."),
+             (TDR, "`IMPROVE_SCOPE` 가 `full` 또는 `teardown` 일 때 — 대장 대조."),
+             (TDX, "`IMPROVE_SCOPE` 가 `full` 또는 `teardown` 일 때 — `98_` 구성 점검.")],
     },
 }
 
@@ -171,7 +217,7 @@ PATH_NOTE = (
     "> 이 파일이 하위 폴더에 있으므로 상위 경로로 표기한다.\n"
 )
 
-OUTPUT_CREATE = """`/workspace/<TOPIC_SLUG>/`
+OUTPUT_CREATE = """`/workspace/EDU-<NN>_<TOPIC_SLUG>/`  (번호는 카탈로그에서 배정)
 - `00_index.md` — 스크립트 자동 생성
 - `01_교육자료_정리본.md` — 객체 대장 + 검토 이력 포함
 - `02_` ~ `97_` — 단계별 `.sql` / `.md`
@@ -230,6 +276,44 @@ def prohibition(ch8: str, heading: str) -> str:
     return m.group(1).strip()
 
 
+def proh_groups(ch8: str, heading: str, keep: tuple[str, ...] | None = None,
+                drop: tuple[str, ...] | None = None) -> str:
+    """공통 금지 사항을 그룹(`**A. …**`) 단위로 골라 낸다.
+
+    36개를 라우터에 전부 두면 **호출마다** 그 60줄을 읽는다. 그런데 대부분은
+    라우팅과 무관한 실행 시점 규칙이다. 라우터는 항상 create/improve 로
+    분기하므로, 리프 양쪽에 넣으면 가시성은 동일하고 라우터는 얇아진다.
+    (명세는 단일 출처를 유지한다 — 여기서 분배만 한다.)
+    """
+    body = prohibition(ch8, heading)
+    chunks: list[tuple[str, list[str]]] = []
+    for line in body.split("\n"):
+        if m := re.match(r"^\*\*([A-Z])\. ", line):
+            chunks.append((m.group(1), [line]))
+        elif chunks:
+            chunks[-1][1].append(line)
+        # 그룹 라벨 이전의 줄은 버린다(현재 없음)
+    if not chunks:
+        sys.exit(f"[오류] '{heading}' 에서 그룹 라벨(**A. …**)을 찾지 못했다.")
+    sel = [(g, ls) for g, ls in chunks
+           if (keep is None or g in keep) and (drop is None or g not in drop)]
+    if not sel:
+        sys.exit(f"[오류] 선택된 금지 그룹이 없다: keep={keep} drop={drop}")
+    return "\n".join("\n".join(ls).rstrip() for _, ls in sel)
+
+
+def pointer_table() -> str:
+    """허브의 조각 포인터 표를 REFERENCES 에서 생성한다.
+
+    손으로 관리하면 조각이 늘거나 이름이 바뀔 때 반드시 어긋난다.
+    실측: 조각을 5개로 나눈 뒤에도 표에는 옛 파일명 3개가 남아 있었다.
+    """
+    rows = ["| 조각 | 내용 | 로드 시점 |", "|------|------|-----------|"]
+    for fname, cfg in REFERENCES.items():
+        rows.append(f"| `references/{fname}` | {cfg['title']} | {cfg['when']} |")
+    return "\n".join(rows)
+
+
 def stopping_points(body: str, prefix: str) -> str:
     """본문의 ⚠️ STOP 을 STEP 번호와 함께 요약 목록으로 재수집한다.
 
@@ -272,6 +356,34 @@ def insert_loads(text: str, loads: dict[str, list[tuple[str, str]]]) -> str:
     return text
 
 
+def chapter_sections(ch_text: str, lo: int, hi: int) -> str:
+    """장 본문에서 `### N.lo` ~ `### N.hi` 절만 떼어낸다.
+
+    한 장이 서로 다른 시점에 필요한 두 관심사를 담고 있을 때 조각으로 나누기
+    위한 것이다. 예: 4장은 "대장·스냅샷"(작성 시점)과 "98_ 구성"(정리 시점)이
+    섞여 있어 앞쪽만 필요한 STEP 에서 뒤쪽 167줄을 함께 읽게 된다.
+
+    lo == 1 이면 장 머리말(제목 다음의 오리엔테이션 블록)도 함께 가져간다.
+    """
+    lines = ch_text.split("\n")
+    marks: list[tuple[int, int]] = []          # (절번호, 시작줄)
+    for i, l in enumerate(lines):
+        if m := re.match(r"^### \d+\.(\d+) ", l):
+            marks.append((int(m.group(1)), i))
+    if not marks:
+        sys.exit(f"[오류] 절 범위를 뗄 수 없다 — `### N.M` 절이 없다: {lines[0][:60]}")
+
+    starts = {n: i for n, i in marks}
+    for n in range(lo, hi + 1):
+        if n not in starts:
+            sys.exit(f"[오류] 존재하지 않는 절을 조각에 지정했다: {n}  ({lines[0][:50]})")
+
+    begin = starts[lo] if lo > 1 else 0
+    after = [i for n, i in marks if n > hi]
+    end = min(after) if after else len(lines)
+    return "\n".join(lines[begin:end]).rstrip()
+
+
 def assemble_reference(chapters: list[str], title: str) -> str:
     """원본 장들을 독립 참조 문서로 재구성한다.
 
@@ -287,8 +399,20 @@ def assemble_reference(chapters: list[str], title: str) -> str:
     renum: dict[str, str] = {}
     seq = 0
     # 1차 통과 — 절 번호 매핑을 만든다
+    #
+    # ⚠️ 3단 절번호(`### N.M.K`)는 지원하지 않는다. 이 정규식이 매치하지 못해
+    #    재번호 없이 그대로 새어 나가고, 참조 파일에는 그 장 번호가 없으므로
+    #    **죽은 좌표**가 된다. 실측: `### 3.2.1` 이 `## 7` 과 `## 8` 사이에
+    #    그대로 남았고 verify 는 references/ 를 훑지 않아 22/22 를 통과했다.
+    #    그래서 조용히 넘기지 않고 빌드에서 막는다.
     for chunk in chapters:
         for line in chunk.split("\n"):
+            if bad := re.match(r"^#{3,4} (\d+\.\d+\.\d+)", line):
+                sys.exit(
+                    f"[오류] 3단 절번호 헤딩은 재번호되지 않아 죽은 좌표가 된다: "
+                    f"{bad.group(1)}\n  {line.strip()[:80]}\n"
+                    f"  → 2단(`### N.M`)으로 승격하거나 `####` 무번호 소절로 바꿔라."
+                )
             if m := re.match(r"^### (\d)\.(\d+) ", line):
                 seq += 1
                 renum[f"{m.group(1)}.{m.group(2)}"] = str(seq)
@@ -313,6 +437,18 @@ def assemble_reference(chapters: list[str], title: str) -> str:
     return f"# {title}\n\n{text}\n"
 
 
+def tidy(text: str) -> str:
+    """조립 산출물의 서식 잡음을 제거한다.
+
+    장 본문 끝의 `---` 와 템플릿의 `---` 가 겹쳐 **구분선이 연속으로** 나오는
+    일이 생긴다 (실측: 라우터 106·108행). 읽는 쪽에서는 빈 절이 하나 있는 것처럼
+    보이므로 정리한다. 빈 줄 3개 이상도 2개로 줄인다.
+    """
+    text = re.sub(r"\n---\s*\n\s*---\s*\n", "\n---\n", text)
+    text = re.sub(r"\n{4,}", "\n\n\n", text)
+    return text
+
+
 def build(spec: Path) -> dict[str, str]:
     check_subs(spec.read_text(encoding="utf-8"))
     CH = load_chapters(spec)
@@ -320,7 +456,13 @@ def build(spec: Path) -> dict[str, str]:
 
     # references — 원본 장을 독립 문서로 재구성 (자기 제목 + 절 번호 재부여)
     for fname, cfg in REFERENCES.items():
-        body = assemble_reference([CH[c] for c in cfg["chapters"]], cfg["title"])
+        if rng := cfg.get("sections"):
+            if len(cfg["chapters"]) != 1:
+                sys.exit(f"[오류] sections 는 단일 장에만 쓸 수 있다: {fname}")
+            chunks = [chapter_sections(CH[cfg["chapters"][0]], *rng)]
+        else:
+            chunks = [CH[c] for c in cfg["chapters"]]
+        body = assemble_reference(chunks, cfg["title"])
         files[f"references/{fname}"] = frontmatter(cfg["name"], cfg["desc"]) + body
 
     # 라우터 — 0·1장 + 8장 공통 금지
@@ -340,23 +482,22 @@ Snowflake 환경에서 **SQL 기반으로 직접 실습하고 데이터 적재 �
 
 ---
 
-## 공유 참조 — 필요한 시점에만 로드
+## 조각(shard) 참조 — 필요한 시점에만 로드
 
 서브스킬이 각 단계에서 로드를 지시한다. **라우터 단계에서는 로드하지 않는다.**
+조각은 **의미 단위**로 나뉘어 있으므로, 필요한 조각만 골라 읽는다.
 
-| 참조 | 내용 | 로드 시점 |
-|------|------|-----------|
-| `references/output-contract.md` | 폴더 구조, 문서 번호, 분리 규칙, 메타 주석, 검증 규율 | 문서를 쓰거나 읽기 직전 |
-| `references/teardown.md` | 객체 대장, 사전 스냅샷, `98_` 필수 구성, 안전장치 | 객체 대장 작성 / `98_` 작업 / 정리 갭 분석 시 |
-| `references/quality-bar.md` | 품질 기준 + 심각도 매핑 | 비판적 검토(CREATE) / 갭 분석(IMPROVE) 시 |
+{pointer_table()}
 
 ---
 
-## 공통 금지 사항
+## 금지 사항 — 라우팅 단계
 
-모드별 금지 사항은 각 서브스킬에 있다.
+아래는 **분기 판단 자체**를 지배하는 규칙이다.
+실행 시점의 공통 금지 사항(검증 근거·정리·보안·문서 구조 등)과 모드별 금지 사항은
+**각 서브스킬에 함께 실려 있다.** 라우터는 항상 서브스킬로 분기하므로 누락되지 않는다.
 
-{prohibition(CH[8], '공통')}
+{proh_groups(CH[8], '공통', keep=('A',))}
 
 ---
 
@@ -372,7 +513,7 @@ Snowflake 환경에서 **SQL 기반으로 직접 실습하고 데이터 적재 �
 
 | 모드 | 산출물 |
 |------|--------|
-| CREATE | `/workspace/<TOPIC_SLUG>/` 에 `00_`~`99_` 문서 세트 (`create/SKILL.md` 참고) |
+| CREATE | `/workspace/EDU-<NN>_<TOPIC_SLUG>/` 에 `00_`~`99_` 문서 세트 + 카탈로그 등록 (`create/SKILL.md` 참고) |
 | IMPROVE | 승인된 결함이 반영된 기존 문서 + 누락 문서 보완 + 누적된 검토 이력 (`improve/SKILL.md` 참고) |
 """, SUB_ROUTER)
     files["SKILL.md"] = router
@@ -411,12 +552,15 @@ Snowflake 환경에서 **SQL 기반으로 직접 실습하고 데이터 적재 �
             + f"## Prerequisites\n\n{prereq}\n\n{PATH_NOTE}\n---\n\n"
             + f"## Workflow\n\n{body}\n\n---\n\n"
             + f"## Stopping Points\n\n{stops}\n{stop_note}\n---\n\n"
+            + "## 공통 금지 사항 — 실행 시점\n\n"
+            + "라우터의 라우팅 단계 금지 사항에 더한다.\n\n"
+            + f"{apply_subs(proh_groups(CH[8], '공통', drop=('A',)), SUB_LEAF)}\n\n---\n\n"
             + f"## {proh_head.replace(' 모드 전용', '')} 전용 금지 사항\n\n"
-            + f"라우터의 공통 금지 사항에 추가한다.\n\n{apply_subs(prohibition(CH[8], proh_head), SUB_LEAF)}\n\n---\n\n"
+            + f"{apply_subs(prohibition(CH[8], proh_head), SUB_LEAF)}\n\n---\n\n"
             + f"## Output\n\n{output}\n"
         )
 
-    return files
+    return {k: tidy(v) for k, v in files.items()}
 
 
 # ───────────────────────────────────────────────────────────────
