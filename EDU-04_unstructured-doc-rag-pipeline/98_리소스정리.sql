@@ -2,8 +2,8 @@
 title: 리소스 정리 (Teardown)
 step: 98
 type: sql
-summary: 실습이 만든 계정·스키마 객체 22종을 역순으로 정리하고(일시 중단 선택지 포함), 재실행 안전 방어 블록과 정리 완료 검증 쿼리로 사전 스냅샷과 대조한다.
-requires: 09_Snowpark_품질평가_및_비용모니터링.sql
+summary: 실습이 만든 계정·스키마 객체 25종을 역순으로 정리하고(일시 중단 선택지 포함), 재실행 안전 방어 블록과 정리 완료 검증 쿼리로 사전 스냅샷과 대조한다.
+requires: 10_CortexAgent_구성.sql
 next: 없음
 */
 
@@ -13,6 +13,7 @@ next: 없음
 --   | 객체                         | 과금                        | 멈추는 방법                           |
 --   |------------------------------|-----------------------------|---------------------------------------|
 --   | **DOC_SEARCH_SVC**           | **서빙 컴퓨트(떠 있는 동안)** | AUTO_SUSPEND 1800초(07_) / SUSPEND / DROP |
+--   | DOC_AGENT                    | 호출 시에만 (상시 과금 없음)  | DROP                                  |
 --   | **TSK_INGEST_DOCS**          | 새 파일이 오면 WH 기동       | SUSPEND / DROP                        |
 --   | **DOCRAG_WH**                | 쿼리 시 (60초 자동중지)      | SUSPEND / DROP                        |
 --   | DOC_STAGE 파일·테이블·인덱스   | 스토리지                     | DROP                                  |
@@ -23,6 +24,7 @@ next: 없음
 --   ✅ PART C 전체 — 실제 실행(1회차). 모든 DROP 성공
 --   ✅ PART C 전체 — **2회차 재실행** 오류 없음 (방어 블록이 "건너뜁니다" 반환)
 --   ✅ PART D 검증 쿼리 — 실제 실행. DOCRAG% 객체 0행
+--   ✅ [2차] DOC_AGENT · DOCRAG_USER_RL 정리 추가 — 2차 완주 후 2회 실행해 확인
 --   ✅ 공식 문서 대조: DROP CORTEX SEARCH SERVICE / DROP RESOURCE MONITOR / DROP TASK
 --   ⚠️ PART A 일시 중단 경로는 실행했으나, 이후 곧바로 PART C 를 실행해 장시간 중단 상태는 관찰하지 않음
 -- ==============================================================================
@@ -86,8 +88,10 @@ SHOW ROLES             LIKE 'DOCRAG%';
 --▶     ALTER TASK IF EXISTS DOCRAG_DB.CURATED.TSK_INGEST_DOCS SUSPEND;
 --▶     DROP  TASK IF EXISTS DOCRAG_DB.CURATED.TSK_INGEST_DOCS;
 --▶     -- 검색 서비스 — 서빙 과금 객체라 명시적으로 먼저 지웁니다 (DROP DATABASE 로도 사라집니다)
+--▶     -- Agent 는 검색 서비스를 도구로 참조합니다. 먼저 지웁니다 (DROP DATABASE 로도 사라집니다)
+--▶     DROP AGENT IF EXISTS DOCRAG_DB.SERVING.DOC_AGENT;
 --▶     DROP CORTEX SEARCH SERVICE IF EXISTS DOCRAG_DB.SERVING.DOC_SEARCH_SVC;
---▶     RETURN 'C-1 완료: 태스크·검색 서비스 삭제';
+--▶     RETURN 'C-1 완료: 태스크·Agent·검색 서비스 삭제';
 --▶ END;
 --▶ $$;
 
@@ -97,6 +101,7 @@ SHOW ROLES             LIKE 'DOCRAG%';
 --   테이블 DOC_INBOX / DOC_PARSED / DOC_PARSE_ERRORS / DOC_CHUNKS / PIPELINE_RUN_LOG /
 --          RAG_CONFIG / ANSWER_CACHE / QUERY_LOG / EVAL_SET / EVAL_RESULT
 --   뷰 V_SEARCH_SOURCE · UDTF CHUNK_TECH_DOC · 프로시저 SP_INGEST_NEW_DOCS / SP_ASK / SP_EVALUATE_RAG
+--   (C-1 이 건너뛰어졌다면 Agent DOC_AGENT 도 여기서 함께 사라집니다)
 --▶ DROP DATABASE IF EXISTS DOCRAG_DB;
 
 -- [C-3] ③ 계정 레벨 — 웨어하우스 먼저, 그다음 리소스 모니터
@@ -110,6 +115,7 @@ SHOW ROLES             LIKE 'DOCRAG%';
 --   DROP ROLE 은 이 역할에 부여된 권한(CORTEX_USER 데이터베이스 역할, EXECUTE TASK ON ACCOUNT,
 --   WH·DB 권한)과 **사용자에게 준 GRANT ROLE** 을 함께 회수합니다 (대장 (b))
 --   이 역할이 소유한 객체는 C-2 에서 이미 사라졌습니다
+--▶ DROP ROLE IF EXISTS DOCRAG_USER_RL;     -- 10_ 소비자 역할 (사용자에게 준 GRANT ROLE 도 회수)
 --▶ DROP ROLE IF EXISTS DOCRAG_ADMIN_RL;
 
 -- ==============================================================================
@@ -149,7 +155,8 @@ SHOW PARAMETERS LIKE 'CORTEX_ENABLED_CROSS_REGION' IN ACCOUNT;
 -- (8) 정리 체크리스트 — 비용 발생 항목은 굵게
 --   [ ] **DOC_SEARCH_SVC 삭제** (C-1)            [ ] **TSK_INGEST_DOCS 삭제** (C-1)
 --   [ ] DOCRAG_DB 삭제 (C-2)                     [ ] **DOCRAG_WH 삭제** (C-3)
---   [ ] DOCRAG_RM 삭제 (C-3)                     [ ] DOCRAG_ADMIN_RL 삭제 (C-4)
+--   [ ] DOCRAG_RM 삭제 (C-3)                     [ ] DOCRAG_ADMIN_RL · DOCRAG_USER_RL 삭제 (C-4)
+--   [ ] DOC_AGENT 삭제 (C-1)
 --   [ ] PART D 전부 0행                          [ ] 사전 스냅샷과 수량 일치
 --   [ ] 로컬 샘플 PDF 삭제                       [ ] (9) 이 문서를 한 번 더 실행해 오류 없음 확인
 -- ==============================================================================

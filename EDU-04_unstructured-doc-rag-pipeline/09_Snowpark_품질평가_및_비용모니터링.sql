@@ -4,7 +4,7 @@ step: 09
 type: sql
 summary: Snowpark DataFrame API 로 작성한 Python 저장 프로시저가 평가셋을 SP_ASK 로 돌려 키워드·출처·거절 정확도를 채점하고, 파이프라인 로그·질의 로그·계정 사용량 뷰로 비용을 점검한다.
 requires: 08_RAG_질의응답_및_캐시.sql
-next: 98_리소스정리.sql
+next: 10_CortexAgent_구성.sql
 */
 
 -- ==============================================================================

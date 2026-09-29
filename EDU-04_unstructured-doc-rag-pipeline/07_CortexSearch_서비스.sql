@@ -11,6 +11,7 @@ next: 08_RAG_질의응답_및_캐시.sql
 -- 검증 상태 (2026-09-28, 실습 완주)
 --   ✅ CREATE CORTEX SEARCH SERVICE (EMBEDDING_MODEL, AUTO_SUSPEND=1800, TARGET_LAG='1 day') — 실제 실행
 --   ✅ SEARCH_PREVIEW 한국어 질의 · 모델명/경보코드 키워드 질의 · ATTRIBUTES 필터 — 실제 실행
+--   ✅ [2차] CHUNK_ID / DOC_TITLE 컬럼 추가 — Agent 검색 도구의 id_column / title_column 용. 유일성 실행 확인
 --   ✅ 원천 뷰의 중복 사본 제거 — 원천 행 수 + 대표 경로(원본 우선)로 확인. 1차 작성본 결함 1건 정정
 --   ⚠️ AUTO_SUSPEND 의 실제 중지·자동 재개 — 30분 무질의가 필요해 관찰하지 않음 (공식 문서 근거)
 --   ⚠️ TARGET_LAG='1 day' 의 시간 경과 자동 갱신 — 시간 경과가 필요해 미관찰. 수동 REFRESH 로 대체 확인
@@ -59,7 +60,12 @@ CREATE OR REPLACE VIEW V_SEARCH_SOURCE
 COMMENT = '검색 원천(중복 사본 제외). [unstructured-doc-rag-pipeline]'
 AS
 SELECT c.FILE_PATH, c.CHUNK_INDEX, c.SECTION, c.CHUNK_TEXT,
-       SPLIT_PART(c.FILE_PATH, '/', 1) AS DOC_FOLDER
+       SPLIT_PART(c.FILE_PATH, '/', 1) AS DOC_FOLDER,
+       -- 🟡 2차 추가: Cortex Agent(10_) 의 검색 도구가 인용에 쓰는 컬럼
+       --   CHUNK_ID  → tool_resources.id_column    (청크마다 유일해야 함)
+       --   DOC_TITLE → tool_resources.title_column (인용에 표시되는 제목)
+       c.FILE_PATH || '#' || c.CHUNK_INDEX                      AS CHUNK_ID,
+       SPLIT_PART(c.FILE_PATH, '/', -1) || ' > ' || c.SECTION   AS DOC_TITLE
 FROM DOCRAG_DB.CURATED.DOC_CHUNKS c
 LEFT JOIN DOCRAG_DB.CURATED.DOC_PARSED p ON p.FILE_MD5 = c.FILE_MD5
 QUALIFY c.FILE_PATH = FIRST_VALUE(c.FILE_PATH)
@@ -69,23 +75,26 @@ QUALIFY c.FILE_PATH = FIRST_VALUE(c.FILE_PATH)
 SELECT COUNT(*) AS ALL_CHUNKS FROM DOCRAG_DB.CURATED.DOC_CHUNKS;   -- 사본 포함
 SELECT COUNT(*) AS INDEXED_CHUNKS, COUNT(DISTINCT FILE_PATH) AS FILES FROM V_SEARCH_SOURCE;  -- 사본 제외
 SELECT DISTINCT FILE_PATH FROM V_SEARCH_SOURCE ORDER BY 1;   -- manuals/… 와 guides/… (archive/ 없음)
+SELECT COUNT(*) - COUNT(DISTINCT CHUNK_ID) AS DUP_CHUNK_ID FROM V_SEARCH_SOURCE;   -- 0 (id_column 은 유일해야 함)
 
 -- ==============================================================================
 -- [2] 검색 서비스
 --   · IF NOT EXISTS: 재실행 시 기존 인덱스를 보존합니다
+--     🔴 1차 판으로 이미 서비스를 만들었다면 CHUNK_ID/DOC_TITLE 이 없습니다. IF NOT EXISTS 는
+--        아무것도 바꾸지 않으므로 DROP CORTEX SEARCH SERVICE 후 다시 실행하십시오 (재임베딩 과금)
 --     정의(ON/ATTRIBUTES/쿼리)를 바꿔야 하면 DROP 후 재생성하십시오 (전체 재임베딩 = 재과금)
 --   · 🔴 서비스의 원천 쿼리에 스트림·UDF 등 제약이 있습니다. 여기서는 단순 뷰 SELECT 입니다
 -- ==============================================================================
 CREATE CORTEX SEARCH SERVICE IF NOT EXISTS DOC_SEARCH_SVC
     ON CHUNK_TEXT
-    ATTRIBUTES FILE_PATH, SECTION, DOC_FOLDER
+    ATTRIBUTES FILE_PATH, SECTION, DOC_FOLDER, CHUNK_ID, DOC_TITLE
     WAREHOUSE       = DOCRAG_WH
     TARGET_LAG      = '1 day'
     EMBEDDING_MODEL = 'snowflake-arctic-embed-l-v2.0'
     AUTO_SUSPEND    = 1800
     COMMENT         = '기술문서 하이브리드 검색. [unstructured-doc-rag-pipeline]'
 AS
-    SELECT CHUNK_TEXT, FILE_PATH, SECTION, DOC_FOLDER
+    SELECT CHUNK_TEXT, FILE_PATH, SECTION, DOC_FOLDER, CHUNK_ID, DOC_TITLE
     FROM DOCRAG_DB.SERVING.V_SEARCH_SOURCE;
 
 DESCRIBE CORTEX SEARCH SERVICE DOC_SEARCH_SVC;
