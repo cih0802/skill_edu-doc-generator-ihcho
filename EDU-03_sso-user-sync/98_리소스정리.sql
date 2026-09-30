@@ -45,7 +45,7 @@ next: 96_실습후_대조.md
 -- |                                   | (더미 IdP 로 연결됨) |
 -- | 계정 레벨 권한 위임               | KSM_HR_SYNC_ADMIN / AAD_PROVISIONING_ROLE 이
 -- |                                   | 계정 사용자·권한을 조작할 수 있는 상태로 남습니다 |
--- | KSM_AUTH_WH 웨어하우스            | 컴퓨트 비용 |
+-- | KSM_AUTH_IHCHO_WH 웨어하우스            | 컴퓨트 비용 |
 --
 -- 🔴 가장 급하면 아래 두 줄만 먼저 실행하십시오 (태스크 정지).
 --    이것만으로 자동 계정 비활성화와 서버리스 크레딧이 멈춥니다.
@@ -68,7 +68,7 @@ ALTER TASK IF EXISTS KSM_ENTERPRISE_DB.OPS.TASK_SYNC_HR_TO_SNOWFLAKE_USERS SUSPE
 ALTER TASK IF EXISTS KSM_ENTERPRISE_DB.OPS.TASK_DAILY_MIDNIGHT_HR_AUDIT SUSPEND;
 
 -- B-2. 웨어하우스 정지
-ALTER WAREHOUSE IF EXISTS KSM_AUTH_WH SUSPEND;
+ALTER WAREHOUSE IF EXISTS KSM_AUTH_IHCHO_WH SUSPEND;
 
 -- B-3. 상태 확인
 SHOW TASKS IN SCHEMA KSM_ENTERPRISE_DB.OPS;
@@ -101,7 +101,7 @@ SHOW TASKS IN SCHEMA KSM_ENTERPRISE_DB.OPS;
 --    반드시 SUSPEND 를 먼저 실행하십시오. (2026-09-16 실행 검증)
 
 USE ROLE ACCOUNTADMIN;
-USE WAREHOUSE COMPUTE_WH;   -- 삭제 대상인 KSM_AUTH_WH 를 쓰지 않도록 전환합니다
+USE WAREHOUSE COMPUTE_WH;   -- 삭제 대상인 KSM_AUTH_IHCHO_WH 를 쓰지 않도록 전환합니다
 
 
 -- ------------------------------------------------------------------------------
@@ -168,8 +168,9 @@ DROP SECURITY INTEGRATION IF EXISTS MOBILE_APP_OAUTH_INTEGRATION;
 -- ------------------------------------------------------------------------------
 -- 앞의 두 사용자는 문서가 명시적으로 만든 것이고,
 -- EMP_F*** 는 **동기화 프로시저가 실행 중에 만든 것**입니다.
-DROP USER IF EXISTS KSM_OFFICE_SAMPLE_USER;
+DROP USER IF EXISTS KSM_OFFICE_IHCHO_USER;
 DROP USER IF EXISTS KSM_MOBILE_CHATBOT_SVC_USER;
+DROP USER IF EXISTS KSM_OFFICE_SAMPLE_USER;   -- 구 버전 이름 — 이전 버전으로 실습했다면 남아 있을 수 있습니다
 
 DROP USER IF EXISTS EMP_F001;
 DROP USER IF EXISTS EMP_F002;
@@ -186,7 +187,8 @@ SHOW USERS LIKE 'EMP_F%';
 -- ------------------------------------------------------------------------------
 -- C-5. ⑥ 웨어하우스 삭제
 -- ------------------------------------------------------------------------------
-DROP WAREHOUSE IF EXISTS KSM_AUTH_WH;
+DROP WAREHOUSE IF EXISTS KSM_AUTH_IHCHO_WH;
+DROP WAREHOUSE IF EXISTS KSM_AUTH_WH;   -- 구 버전 이름 — 이전 버전으로 실습했다면 남아 있을 수 있습니다
 
 
 -- ------------------------------------------------------------------------------
@@ -320,8 +322,8 @@ SHOW INTEGRATIONS;
 -- [ ] **ENTRA_ID_SAML_INTEGRATION — DROP 완료 (로그인 페이지 원복)**
 -- [ ] MOBILE_APP_OAUTH_INTEGRATION — DROP 완료
 -- [ ] DATABASE KSM_ENTERPRISE_DB — DROP 완료
--- [ ] **WAREHOUSE KSM_AUTH_WH — DROP 완료 (컴퓨트 비용)**
--- [ ] 사용자 KSM_OFFICE_SAMPLE_USER / KSM_MOBILE_CHATBOT_SVC_USER — DROP 완료
+-- [ ] **WAREHOUSE KSM_AUTH_IHCHO_WH — DROP 완료 (컴퓨트 비용)**
+-- [ ] 사용자 KSM_OFFICE_IHCHO_USER / KSM_MOBILE_CHATBOT_SVC_USER — DROP 완료
 -- [ ] **사용자 EMP_F*** 전량 — DROP 완료 (프로시저가 만든 것)**
 -- [ ] **역할 5종 — DROP 완료 (계정 레벨 권한 위임 소멸)**
 -- [ ] 발급한 SCIM 토큰 사본 폐기 완료

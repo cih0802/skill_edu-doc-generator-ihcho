@@ -18,7 +18,7 @@ next: 07_CortexSearch_서비스.sql
 -- ==============================================================================
 -- ⚙️ 설정값
 --   태스크 : DOCRAG_DB.CURATED.TSK_INGEST_DOCS
---   실행   : DOCRAG_WH (사용자 관리 웨어하우스 — 02_ 리소스 모니터의 통제 범위 안)
+--   실행   : DOCRAG_IHCHO_WH (사용자 관리 웨어하우스 — 02_ 리소스 모니터의 통제 범위 안)
 -- ==============================================================================
 
 -- 💰 비용 최적화 설계 — 왜 Triggered Task 인가
@@ -33,14 +33,14 @@ next: 07_CortexSearch_서비스.sql
 --     한 번의 실행에서 묶여 처리되므로 파일마다 웨어하우스가 깨어나지 않습니다
 
 USE ROLE DOCRAG_ADMIN_RL;
-USE WAREHOUSE DOCRAG_WH;
+USE WAREHOUSE DOCRAG_IHCHO_WH;
 USE SCHEMA DOCRAG_DB.CURATED;
 
 -- ==============================================================================
 -- [1] Triggered Task — SCHEDULE 을 넣지 않습니다
 -- ==============================================================================
 CREATE TASK IF NOT EXISTS TSK_INGEST_DOCS
-    WAREHOUSE = DOCRAG_WH
+    WAREHOUSE = DOCRAG_IHCHO_WH
     COMMENT   = '신규 문서 감지 시 증분 파싱·청킹. [unstructured-doc-rag-pipeline]'
     WHEN SYSTEM$STREAM_HAS_DATA('DOCRAG_DB.RAW.DOC_STAGE_STREAM')
 AS

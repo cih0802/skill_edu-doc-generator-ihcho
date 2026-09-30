@@ -29,7 +29,7 @@ next: 06_사용자권한_자동동기화_프로시저_및_태스크.sql
 -- ==============================================================================
 
 USE ROLE KSM_HR_SYNC_ADMIN;
-USE WAREHOUSE KSM_AUTH_WH;
+USE WAREHOUSE KSM_AUTH_IHCHO_WH;
 USE DATABASE KSM_ENTERPRISE_DB;
 USE SCHEMA BRONZE;
 

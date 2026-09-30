@@ -42,7 +42,7 @@ next: 09_Snowpark_품질평가_및_비용모니터링.sql
 --   ⑤ temperature 0: 같은 입력에 같은 경향의 답 → 캐시 재사용이 의미를 가집니다
 
 USE ROLE DOCRAG_ADMIN_RL;
-USE WAREHOUSE DOCRAG_WH;
+USE WAREHOUSE DOCRAG_IHCHO_WH;
 USE SCHEMA DOCRAG_DB.SERVING;
 
 -- ==============================================================================

@@ -231,7 +231,7 @@ jdbc:mariadb://<HOSTNAME>:3306
 |----------|-----------|-------|
 | `Source Database Connection URL` | `jdbc:postgresql://host:5432/db?sslmode=require` | `jdbc:mariadb://host:3306` |
 | `Source Database Driver` | `postgresql-42.7.10.jar` | `mariadb-java-client-3.5.3.jar` |
-| `Source Database Publication Name` | `openflow_pub` (필수) | **해당 없음** — MySQL 은 PUBLICATION 개념이 없음 |
+| `Source Database Publication Name` | `openflow_ihcho_pub` (필수) | **해당 없음** — MySQL 은 PUBLICATION 개념이 없음 |
 
 ### 테이블 선택 섹션
 
@@ -305,7 +305,7 @@ PostgreSQL 측 대응 제약:
 | 06번 커넥터 이름 | `PG_CDC_CONNECTOR` | `MYSQL_CDC_CONNECTOR` |
 | 07번 드라이버 | `postgresql-*.jar` | `mariadb-java-client-*.jar` |
 | 07번 JDBC URL | `jdbc:postgresql://h:5432/db?sslmode=require` | `jdbc:mariadb://h:3306` |
-| 07번 PUBLICATION | `openflow_pub` | (프로퍼티 없음) |
+| 07번 PUBLICATION | `openflow_ihcho_pub` | (프로퍼티 없음) |
 | 07번 테이블 목록 | `"public"."customers"` | `"cdclab"."customers"` |
 | 07번 정규식 프로퍼티명 | `Included Table Regex` | `Included Source Table Pattern` |
 | 09번 대상 스키마 | `CDC_LAB_PG_DB.PUBLIC` | `CDC_LAB_MYSQL_DB.CDCLAB` |

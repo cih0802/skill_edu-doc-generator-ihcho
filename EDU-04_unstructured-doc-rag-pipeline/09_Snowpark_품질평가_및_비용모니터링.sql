@@ -32,7 +32,7 @@ next: 10_CortexAgent_구성.sql
 --     설정(모델·TOP_K)을 바꾸면 캐시 키가 달라져 새로 호출됩니다 — 비교 평가는 그때만 과금됩니다
 
 USE ROLE DOCRAG_ADMIN_RL;
-USE WAREHOUSE DOCRAG_WH;
+USE WAREHOUSE DOCRAG_IHCHO_WH;
 USE SCHEMA DOCRAG_DB.SERVING;
 
 -- ==============================================================================
@@ -179,7 +179,7 @@ USE ROLE ACCOUNTADMIN;
 -- (a) 웨어하우스 크레딧 — 리소스 모니터 상한과 비교
 SELECT WAREHOUSE_NAME, SUM(CREDITS_USED) AS CREDITS
 FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY
-WHERE WAREHOUSE_NAME = 'DOCRAG_WH' AND START_TIME >= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
+WHERE WAREHOUSE_NAME = 'DOCRAG_IHCHO_WH' AND START_TIME >= DATEADD(DAY, -7, CURRENT_TIMESTAMP())
 GROUP BY 1;
 
 -- (b) Cortex Search 서빙·임베딩 — 서비스 단위 일별
@@ -199,7 +199,7 @@ GROUP BY 1 ORDER BY 2 DESC;
 --   조건: 1쪽 PDF 2종(+사본 1), 파싱 2회·실패 1회, 청크 6(인덱싱), 질의 14건(LLM 8회·캐시 6회)
 --   | 항목                                    | 값            | 출처 뷰                              |
 --   |-----------------------------------------|---------------|--------------------------------------|
---   | DOCRAG_WH 크레딧 (작성 중 재실행 포함)   | 약 0.22       | WAREHOUSE_METERING_HISTORY           |
+--   | DOCRAG_IHCHO_WH 크레딧 (작성 중 재실행 포함)   | 약 0.22       | WAREHOUSE_METERING_HISTORY           |
 --   | Cortex Search 임베딩                    | 약 0.00006    | CORTEX_SEARCH_DAILY_USAGE_HISTORY    |
 --   | 계정 AI_FUNCTIONS 합계 (다른 사용 포함 가능) | 약 0.018  | METERING_DAILY_HISTORY               |
 --   이 값은 **이번 1회 관찰**이며 비교·예산의 기준값이 아닙니다. 크레딧 대부분이 웨어하우스였던

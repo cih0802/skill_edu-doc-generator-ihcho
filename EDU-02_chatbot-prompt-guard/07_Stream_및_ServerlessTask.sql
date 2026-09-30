@@ -43,7 +43,7 @@ next: 08_CortexSearch_서비스.sql
 -- ==============================================================================
 
 USE ROLE KSM_CHATBOT_ADMIN_ROLE;
-USE WAREHOUSE KSM_CHATBOT_WH;
+USE WAREHOUSE KSM_CHATBOT_IHCHO_WH;
 USE DATABASE KSM_CHATBOT_DB;
 USE SCHEMA BRONZE;
 

@@ -34,7 +34,7 @@ next: 06_증분파이프라인_TriggeredTask.sql
 --      모드별 요율은 Snowflake Service Consumption Table 에서 확인하십시오 (이 자료는 측정하지 않음)
 
 USE ROLE DOCRAG_ADMIN_RL;
-USE WAREHOUSE DOCRAG_WH;
+USE WAREHOUSE DOCRAG_IHCHO_WH;
 USE SCHEMA DOCRAG_DB.CURATED;
 
 -- ==============================================================================

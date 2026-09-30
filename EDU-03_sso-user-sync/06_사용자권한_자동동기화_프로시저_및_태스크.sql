@@ -106,7 +106,7 @@ next: 07_모바일앱_External_OAuth_설정.sql
 -- ==============================================================================
 
 USE ROLE ACCOUNTADMIN;
-USE WAREHOUSE KSM_AUTH_WH;
+USE WAREHOUSE KSM_AUTH_IHCHO_WH;
 USE DATABASE KSM_ENTERPRISE_DB;
 USE SCHEMA OPS;
 
@@ -230,7 +230,7 @@ BEGIN
                      || ' LOGIN_NAME = ''' || v_emp_id || ''''
                      || ' DISPLAY_NAME = ''' || v_display || ''''
                      || ' DEFAULT_ROLE = ' || v_role
-                     || ' DEFAULT_WAREHOUSE = KSM_AUTH_WH'
+                     || ' DEFAULT_WAREHOUSE = KSM_AUTH_IHCHO_WH'
                      || ' DISABLED = FALSE'
                      || ' COMMENT = ''현장직 인사 DB 자동 동기화 사용자. 실습용. [sso-user-sync]''';
             EXECUTE IMMEDIATE :v_sql;

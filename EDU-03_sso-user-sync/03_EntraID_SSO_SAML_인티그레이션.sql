@@ -15,7 +15,7 @@ next: 04_EntraID_SCIM_자동프로비저닝.sql
 -- 검증 상태 (2026-09-16, 계정 LJ20513 / AWS_AP_NORTHEAST_1 / Enterprise 에서 실제 실행):
 --   ✅ CREATE SECURITY INTEGRATION ... TYPE = SAML2 — 실제 실행 검증 완료
 --      ("Integration ENTRA_ID_SAML_INTEGRATION successfully created")
---   ✅ CREATE USER KSM_OFFICE_SAMPLE_USER + GRANT ROLE — 실제 실행 검증 완료
+--   ✅ CREATE USER KSM_OFFICE_IHCHO_USER + GRANT ROLE — 실제 실행 검증 완료
 --   ✅ DROP SECURITY INTEGRATION 으로 완전 원복 — 실제 실행 검증 완료
 --   ⚠️ 실제 Entra ID 와의 SSO 로그인 왕복은 미검증. 위 인증서·Issuer·SSO URL 은
 --      더미 값이므로 이 인티그레이션으로는 실제 로그인이 성공하지 않는다.
@@ -61,22 +61,22 @@ DESCRIBE SECURITY INTEGRATION ENTRA_ID_SAML_INTEGRATION;
 --    시큐리티 인티그레이션이나 사용자가 있으면 사용자 자산을 파괴하고, DROP 으로
 --    되돌아가지 않습니다. 재실행 안전성은 IF NOT EXISTS + 사전 충돌 검사로 확보합니다.
 --    (사전 충돌 검사는 95_실습전_기준선.md 를 먼저 수행하십시오)
-CREATE USER IF NOT EXISTS KSM_OFFICE_SAMPLE_USER
+CREATE USER IF NOT EXISTS KSM_OFFICE_IHCHO_USER
     LOGIN_NAME = 'user.office@ksm.co.kr'
     DISPLAY_NAME = '김사무 (경영기획팀)'
     FIRST_NAME = '사무'
     LAST_NAME = '김'
     EMAIL = 'user.office@ksm.co.kr'
     DEFAULT_ROLE = KSM_OFFICE_USER_ROLE
-    DEFAULT_WAREHOUSE = KSM_AUTH_WH
+    DEFAULT_WAREHOUSE = KSM_AUTH_IHCHO_WH
     MUST_CHANGE_PASSWORD = FALSE
     COMMENT = '사무직 Entra ID SSO 연동 테스트 사용자. 실습용. [sso-user-sync]';
 
 -- 사무직 역할 부여
-GRANT ROLE KSM_OFFICE_USER_ROLE TO USER KSM_OFFICE_SAMPLE_USER;
+GRANT ROLE KSM_OFFICE_USER_ROLE TO USER KSM_OFFICE_IHCHO_USER;
 
 -- 03.4 계정 전체 또는 사용자별 SSO 강제 설정 옵션 (운영 단계 적용)
--- ALTER USER KSM_OFFICE_SAMPLE_USER SET SSO_LOGIN_ONLY = TRUE;
+-- ALTER USER KSM_OFFICE_IHCHO_USER SET SSO_LOGIN_ONLY = TRUE;
 
 SELECT 'Step 03 Completed: Entra ID SAML 2.0 SSO Integration Configured and Verified' AS STATUS;
 
@@ -86,10 +86,10 @@ SELECT 'Step 03 Completed: Entra ID SAML 2.0 SSO Integration Configured and Veri
 -- ==============================================================================
 -- 정본은 `98_리소스정리.sql` 입니다.
 --   · SECURITY INTEGRATION  ENTRA_ID_SAML_INTEGRATION  ← **계정 레벨**
---   · USER                  KSM_OFFICE_SAMPLE_USER     ← **계정 레벨**
+--   · USER                  KSM_OFFICE_IHCHO_USER     ← **계정 레벨**
 --
 -- 🔴 SAML 인티그레이션은 계정 **로그인 페이지에 SSO 버튼을 추가**합니다.
 --    남겨두면 모든 사용자가 더미 IdP 로 가는 버튼을 보게 됩니다. 반드시 제거하십시오.
 --
 -- DROP SECURITY INTEGRATION IF EXISTS ENTRA_ID_SAML_INTEGRATION;
--- DROP USER IF EXISTS KSM_OFFICE_SAMPLE_USER;
+-- DROP USER IF EXISTS KSM_OFFICE_IHCHO_USER;

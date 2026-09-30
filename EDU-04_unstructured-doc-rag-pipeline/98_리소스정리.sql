@@ -15,7 +15,7 @@ next: 없음
 --   | **DOC_SEARCH_SVC**           | **서빙 컴퓨트(떠 있는 동안)** | AUTO_SUSPEND 1800초(07_) / SUSPEND / DROP |
 --   | DOC_AGENT                    | 호출 시에만 (상시 과금 없음)  | DROP                                  |
 --   | **TSK_INGEST_DOCS**          | 새 파일이 오면 WH 기동       | SUSPEND / DROP                        |
---   | **DOCRAG_WH**                | 쿼리 시 (60초 자동중지)      | SUSPEND / DROP                        |
+--   | **DOCRAG_IHCHO_WH**                | 쿼리 시 (60초 자동중지)      | SUSPEND / DROP                        |
 --   | DOC_STAGE 파일·테이블·인덱스   | 스토리지                     | DROP                                  |
 -- ==============================================================================
 
@@ -44,7 +44,7 @@ USE ROLE ACCOUNTADMIN;
 --▶ ALTER TASK DOCRAG_DB.CURATED.TSK_INGEST_DOCS SUSPEND;
 --▶ ALTER CORTEX SEARCH SERVICE DOCRAG_DB.SERVING.DOC_SEARCH_SVC SUSPEND SERVING;
 --▶ ALTER CORTEX SEARCH SERVICE DOCRAG_DB.SERVING.DOC_SEARCH_SVC SUSPEND INDEXING;
---▶ ALTER WAREHOUSE DOCRAG_WH SUSPEND;
+--▶ ALTER WAREHOUSE DOCRAG_IHCHO_WH SUSPEND;
 --   ⚠️ 일시 중단해도 남는 것: 스토리지(스테이지 파일·테이블·인덱스). 과금은 작지만 0 이 아닙니다
 --   재개: ALTER TASK … RESUME; ALTER CORTEX SEARCH SERVICE … RESUME SERVING; RESUME INDEXING;
 
@@ -105,10 +105,11 @@ SHOW ROLES             LIKE 'DOCRAG%';
 --▶ DROP DATABASE IF EXISTS DOCRAG_DB;
 
 -- [C-3] ③ 계정 레벨 — 웨어하우스 먼저, 그다음 리소스 모니터
---   🔴 현재 세션이 DOCRAG_WH 를 쓰고 있다면 먼저 바꿉니다. 사용 중인 WH 를 지우면 후속 문장이 실패합니다
+--   🔴 현재 세션이 DOCRAG_IHCHO_WH 를 쓰고 있다면 먼저 바꿉니다. 사용 중인 WH 를 지우면 후속 문장이 실패합니다
 --      (COMPUTE_WH 는 계정 기본 WH 입니다. 없거나 권한이 없으면 가진 WH 로 바꾸십시오)
 --▶ USE WAREHOUSE COMPUTE_WH;
---▶ DROP WAREHOUSE IF EXISTS DOCRAG_WH;
+--▶ DROP WAREHOUSE IF EXISTS DOCRAG_IHCHO_WH;
+--▶ DROP WAREHOUSE IF EXISTS DOCRAG_WH;   -- 구 버전 이름 — 이전 버전으로 실습했다면 남아 있을 수 있습니다
 --▶ DROP RESOURCE MONITOR IF EXISTS DOCRAG_RM;
 
 -- [C-4] ④ 역할 — 마지막
@@ -154,7 +155,7 @@ SHOW PARAMETERS LIKE 'CORTEX_ENABLED_CROSS_REGION' IN ACCOUNT;
 -- ==============================================================================
 -- (8) 정리 체크리스트 — 비용 발생 항목은 굵게
 --   [ ] **DOC_SEARCH_SVC 삭제** (C-1)            [ ] **TSK_INGEST_DOCS 삭제** (C-1)
---   [ ] DOCRAG_DB 삭제 (C-2)                     [ ] **DOCRAG_WH 삭제** (C-3)
+--   [ ] DOCRAG_DB 삭제 (C-2)                     [ ] **DOCRAG_IHCHO_WH 삭제** (C-3)
 --   [ ] DOCRAG_RM 삭제 (C-3)                     [ ] DOCRAG_ADMIN_RL · DOCRAG_USER_RL 삭제 (C-4)
 --   [ ] DOC_AGENT 삭제 (C-1)
 --   [ ] PART D 전부 0행                          [ ] 사전 스냅샷과 수량 일치

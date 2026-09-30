@@ -34,7 +34,7 @@ next: 05_네트워크_규칙_및_EAI_구성.sql
 | 2 | 포트 | `5432` | 05번 Network Rule |
 | 3 | 소스 DB 이름 | `cdclab` | 07번 JDBC URL |
 | 4 | 복제 사용자 / 비밀번호 | `openflow_repl` / `********` | 05번 Secret, 07번 config |
-| 5 | PUBLICATION 이름 | `openflow_pub` | 07번 config |
+| 5 | PUBLICATION 이름 | `openflow_ihcho_pub` | 07번 config |
 
 기록해 두세요.
 
@@ -262,7 +262,7 @@ SELECT pubname, puballtables FROM pg_publication;
 이 실습에서는 대상 테이블을 명시적으로 지정합니다(범위가 명확해 권장).
 
 ```sql
-CREATE PUBLICATION openflow_pub
+CREATE PUBLICATION openflow_ihcho_pub
     FOR TABLE public.customers, public.orders
     WITH (publish_via_partition_root = true);
 ```
@@ -270,7 +270,7 @@ CREATE PUBLICATION openflow_pub
 전체 테이블을 대상으로 하려면:
 
 ```sql
-CREATE PUBLICATION openflow_pub
+CREATE PUBLICATION openflow_ihcho_pub
     FOR ALL TABLES
     WITH (publish_via_partition_root = true);
 ```
@@ -283,12 +283,12 @@ CREATE PUBLICATION openflow_pub
 ```sql
 SELECT pubname, puballtables, pubinsert, pubupdate, pubdelete
 FROM pg_publication
-WHERE pubname = 'openflow_pub';
+WHERE pubname = 'openflow_ihcho_pub';
 
 -- 발행 대상 테이블 확인
 SELECT schemaname, tablename
 FROM pg_publication_tables
-WHERE pubname = 'openflow_pub';
+WHERE pubname = 'openflow_ihcho_pub';
 ```
 
 `pubinsert`, `pubupdate`, `pubdelete` 가 모두 `t` 여야 CDC 3종이 모두 잡힙니다.
@@ -356,7 +356,7 @@ sudo systemctl reload postgresql
 - [ ] 초기 데이터 각 3건 삽입 완료
 - [ ] `pg_roles` 에서 `openflow_repl` 의 `rolreplication` = `t`, `rolcanlogin` = `t`
 - [ ] `openflow_repl` 이 대상 테이블에 `SELECT` 권한 보유
-- [ ] `pg_publication` 에 `openflow_pub` 존재, `pubinsert/pubupdate/pubdelete` = `t`
+- [ ] `pg_publication` 에 `openflow_ihcho_pub` 존재, `pubinsert/pubupdate/pubdelete` = `t`
 - [ ] 로컬에서 `nslookup <HOSTNAME>` 성공 (**05번의 DNS 검증 통과 조건**)
 - [ ] 로컬에서 `nc -zv <HOSTNAME> <PORT>` 성공
 - [ ] `psql` 로 `openflow_repl` 계정 접속 성공
@@ -376,7 +376,7 @@ sudo systemctl reload postgresql
 
 ```sql
 -- 이 문서에서 만든 것: PUBLICATION, 실습 테이블 2개, 복제 사용자, wal_level 변경
-DROP PUBLICATION IF EXISTS openflow_pub;
+DROP PUBLICATION IF EXISTS openflow_ihcho_pub;
 
 DROP TABLE IF EXISTS public.orders;
 DROP TABLE IF EXISTS public.customers;

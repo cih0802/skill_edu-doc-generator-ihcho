@@ -100,7 +100,7 @@ next: 10_계정레벨_AIGuardrails_및_감사.sql
 -- [1] 보안 가드 동적 제어 테이블
 -- ##############################################################################
 USE ROLE KSM_CHATBOT_ADMIN_ROLE;
-USE WAREHOUSE KSM_CHATBOT_WH;
+USE WAREHOUSE KSM_CHATBOT_IHCHO_WH;
 USE DATABASE KSM_CHATBOT_DB;
 USE SCHEMA SECURITY;
 

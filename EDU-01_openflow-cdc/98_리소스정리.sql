@@ -30,7 +30,7 @@ next: 96_실습후_대조.md
 --   지금 크레딧을 소비하고 있는 것은 다음 둘입니다.
 --
 --     ① OPENFLOW RUNTIME  — 자동 suspend 되지 않습니다. 계속 과금됩니다.
---     ② OPENFLOW_EDU_WH   — AUTO_SUSPEND=60 이므로 유휴 시 과금은 미미합니다.
+--     ② OPENFLOW_EDU_IHCHO_WH   — AUTO_SUSPEND=60 이므로 유휴 시 과금은 미미합니다.
 --
 --   OPENFLOW DEPLOYMENT 자체에는 별도 과금이 없습니다.
 --   → 비용만 급히 멈추려면 PART A(일시 중단)만 수행하면 됩니다.
@@ -138,7 +138,7 @@ next: 96_실습후_대조.md
 --   CDC_LAB_PG_DB   → 보존 가능. 스토리지 비용만 발생 (컴퓨트 없음)
 --   OPENFLOW_EDU_DB → 보존 권장하지 않음. Runtime/Connector 의 컨테이너이며
 --                     Event Table 이 계속 쌓입니다
---   OPENFLOW_EDU_WH → 보존해도 AUTO_SUSPEND=60 이므로 유휴 비용은 미미하나,
+--   OPENFLOW_EDU_IHCHO_WH → 보존해도 AUTO_SUSPEND=60 이므로 유휴 비용은 미미하나,
 --                     실습 전 상태 복구를 원하면 삭제하세요
 --
 -- 보존하려면 아래 PART C-6 의 해당 DROP 문을 주석 처리된 채로 두세요.
@@ -343,7 +343,8 @@ SHOW EXTERNAL ACCESS INTEGRATIONS LIKE 'PG_SOURCE_%';
 -- -- Runtime / Connector 가 모두 삭제된 뒤에만 성공합니다.
 -- DROP DATABASE  IF EXISTS OPENFLOW_EDU_DB;
 --
--- DROP WAREHOUSE IF EXISTS OPENFLOW_EDU_WH;
+-- DROP WAREHOUSE IF EXISTS OPENFLOW_EDU_IHCHO_WH;
+-- DROP WAREHOUSE IF EXISTS OPENFLOW_EDU_WH;         -- 구 버전 이름 — 이전 버전으로 실습했다면 남아 있을 수 있습니다
 
 -- ⚠️ 계정 기본 객체(COMPUTE_WH, SNOWFLAKE DB, PUBLIC 등)는 절대
 --    삭제하지 마세요. 위 구문에는 포함되어 있지 않습니다.
@@ -417,7 +418,8 @@ FROM pg_replication_slots;
 SELECT pg_drop_replication_slot('<slot_name>');
 
 -- (b) PUBLICATION
-DROP PUBLICATION IF EXISTS openflow_pub;
+DROP PUBLICATION IF EXISTS openflow_ihcho_pub;
+DROP PUBLICATION IF EXISTS openflow_pub;   -- 구 버전 이름 — 이전 버전으로 실습했다면 남아 있을 수 있습니다
 
 -- (c) 실습 테이블 (외래 참조 순서상 orders 를 먼저)
 DROP TABLE IF EXISTS public.orders;
@@ -545,13 +547,13 @@ DESCRIBE USER IDENTIFIER($my_user);
 -- [ ] Event Table EVENTS — OPENFLOW_EDU_DB DROP 으로 함께 제거됨
 -- [ ] Database OPENFLOW_EDU_DB — DROP 완료
 -- [ ] Database CDC_LAB_PG_DB — DROP 완료 (또는 의도적으로 보존)
--- [ ] **Warehouse OPENFLOW_EDU_WH — DROP 완료 (컴퓨트 비용)**
+-- [ ] **Warehouse OPENFLOW_EDU_IHCHO_WH — DROP 완료 (컴퓨트 비용)**
 -- [ ] Role 3종 — DROP 완료
 -- [ ] 사용자 DEFAULT_SECONDARY_ROLES — 실습 전 값으로 원복 확인
 --
 -- 외부 (소스 DB)
 -- [ ] **복제 슬롯 삭제 완료 (WAL 축적 방지 — 소스 디스크)**
--- [ ] PUBLICATION openflow_pub 삭제 완료
+-- [ ] PUBLICATION openflow_ihcho_pub 삭제 완료
 -- [ ] 실습 테이블 customers / orders 삭제 완료
 -- [ ] 복제 사용자 openflow_repl 삭제 완료
 -- [ ] wal_level (또는 binlog 파라미터) 원복 + 재시작 완료

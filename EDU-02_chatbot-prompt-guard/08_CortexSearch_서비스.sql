@@ -41,7 +41,7 @@ next: 09_가드동적제어_및_검증.sql
 --   Service        : KSM_CHATBOT_DB.SERVING.KSM_HQ_SEARCH_SERVICE
 --   검색 대상 컬럼  : CHUNK_TEXT
 --   ATTRIBUTES     : FILE_NAME, FILE_URL, CHUNK_INDEX
---   Warehouse      : KSM_CHATBOT_WH   (인덱스 빌드/갱신용)
+--   Warehouse      : KSM_CHATBOT_IHCHO_WH   (인덱스 빌드/갱신용)
 --   TARGET_LAG     : 1 hour           (실습 중 즉시 반영을 보려면 '1 minute')
 --   EMBEDDING_MODEL: snowflake-arctic-embed-l-v2.0   ← 🔴 Multilingual. 아래 경고 참고
 --   AUTO_SUSPEND   : 3600 초
@@ -79,7 +79,7 @@ next: 09_가드동적제어_및_검증.sql
 -- ==============================================================================
 
 USE ROLE KSM_CHATBOT_ADMIN_ROLE;
-USE WAREHOUSE KSM_CHATBOT_WH;
+USE WAREHOUSE KSM_CHATBOT_IHCHO_WH;
 USE DATABASE KSM_CHATBOT_DB;
 USE SCHEMA SERVING;
 
@@ -111,7 +111,7 @@ SELECT COUNT(*) AS CHUNK_COUNT FROM KSM_CHATBOT_DB.SILVER.DOCUMENT_CHUNKS;
 CREATE CORTEX SEARCH SERVICE IF NOT EXISTS KSM_CHATBOT_DB.SERVING.KSM_HQ_SEARCH_SERVICE
     ON CHUNK_TEXT
     ATTRIBUTES FILE_NAME, FILE_URL, CHUNK_INDEX
-    WAREHOUSE = KSM_CHATBOT_WH
+    WAREHOUSE = KSM_CHATBOT_IHCHO_WH
     TARGET_LAG = '1 hour'
     EMBEDDING_MODEL = 'snowflake-arctic-embed-l-v2.0'
     AUTO_SUSPEND = 3600

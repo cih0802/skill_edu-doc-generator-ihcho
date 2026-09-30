@@ -32,7 +32,7 @@ next: 08_동기화_시나리오_검증.sql
 -- ==============================================================================
 
 USE ROLE ACCOUNTADMIN;
-USE WAREHOUSE KSM_AUTH_WH;
+USE WAREHOUSE KSM_AUTH_IHCHO_WH;
 USE DATABASE KSM_ENTERPRISE_DB;
 USE SCHEMA SECURITY;
 
@@ -93,7 +93,7 @@ CREATE USER IF NOT EXISTS KSM_MOBILE_CHATBOT_SVC_USER
     LOGIN_NAME = 'ksm_mobile_chatbot_svc'
     DISPLAY_NAME = 'KSM Mobile Chatbot Backend Service'
     DEFAULT_ROLE = KSM_MOBILE_CHATBOT_SERVICE_ROLE
-    DEFAULT_WAREHOUSE = KSM_AUTH_WH
+    DEFAULT_WAREHOUSE = KSM_AUTH_IHCHO_WH
     TYPE = SERVICE
     COMMENT = '모바일 챗봇 백엔드 게이트웨이 API 전용 서비스 계정. 실습용. [sso-user-sync]';
 

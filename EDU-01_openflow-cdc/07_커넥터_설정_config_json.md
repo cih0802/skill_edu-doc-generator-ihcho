@@ -43,10 +43,10 @@ HOSTNAME         = CHANGE_ME.rds.amazonaws.com     (04번)
 PORT             = 5432                            (04번)
 DATABASE         = cdclab                          (04번)
 REPL_USER        = openflow_repl                   (04번)
-PUBLICATION      = openflow_pub                    (04번)
+PUBLICATION      = openflow_ihcho_pub                    (04번)
 SECRET_FQN       = OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_SOURCE_SECRET
 DEST_DB          = CDC_LAB_PG_DB
-WAREHOUSE        = OPENFLOW_EDU_WH
+WAREHOUSE        = OPENFLOW_EDU_IHCHO_WH
 ```
 
 JDBC URL 은 위 값으로 조립합니다.
@@ -158,7 +158,7 @@ GET '<LIVE_VERSION_URI>/config.json' 'file:///tmp/';
 | `Source Database User` | `openflow_repl` | STRING_LITERAL |
 | `Source Database Password` | `OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_SOURCE_SECRET` | **SECRET_REFERENCE** |
 | `Source Database Driver` | `["postgresql-42.7.10.jar"]` | **ASSET_REFERENCE** |
-| `Source Database Publication Name` | `openflow_pub` | STRING_LITERAL |
+| `Source Database Publication Name` | `openflow_ihcho_pub` | STRING_LITERAL |
 
 ### Replication table schema
 
@@ -187,7 +187,7 @@ GET '<LIVE_VERSION_URI>/config.json' 'file:///tmp/';
 | 프로퍼티 | 값 |
 |----------|-----|
 | `Snowflake Destination Database` | `CDC_LAB_PG_DB` |
-| `Snowflake Warehouse` | `OPENFLOW_EDU_WH` |
+| `Snowflake Warehouse` | `OPENFLOW_EDU_IHCHO_WH` |
 | `Object Identifier Resolution` | `CASE_INSENSITIVE` |
 | `Destination Schema Pattern` | `${source.schema.name}` (기본값) |
 
@@ -227,7 +227,7 @@ edits = {
         "Source Database Connection URL":
             "jdbc:postgresql://CHANGE_ME.rds.amazonaws.com:5432/cdclab?sslmode=require",
         "Source Database User": "openflow_repl",
-        "Source Database Publication Name": "openflow_pub",
+        "Source Database Publication Name": "openflow_ihcho_pub",
     },
     "Replication table schema": {
         "Included Comma Separated Source Table Names":
@@ -238,7 +238,7 @@ edits = {
     },
     "Destination details": {
         "Snowflake Destination Database": "CDC_LAB_PG_DB",
-        "Snowflake Warehouse": "OPENFLOW_EDU_WH",
+        "Snowflake Warehouse": "OPENFLOW_EDU_IHCHO_WH",
         "Object Identifier Resolution": "CASE_INSENSITIVE",
     },
     "Migration": {
@@ -394,9 +394,9 @@ FILES = ('config.json');
 | Source Database User | `openflow_repl` |
 | Source Database Password (Secret) | `OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_SOURCE_SECRET` |
 | Driver JAR | 2-1 에서 받은 `postgresql-*.jar` 업로드 |
-| Publication Name | `openflow_pub` |
+| Publication Name | `openflow_ihcho_pub` |
 | Destination Database | `CDC_LAB_PG_DB` |
-| Warehouse | `OPENFLOW_EDU_WH` |
+| Warehouse | `OPENFLOW_EDU_IHCHO_WH` |
 | Ingestion Type | `full` |
 
 5. 테이블 선택 단계에서 `public.customers`, `public.orders` 체크

@@ -20,7 +20,7 @@ next: 04_문서업로드_안내.md
 -- ==============================================================================
 
 USE ROLE DOCRAG_ADMIN_RL;
-USE WAREHOUSE DOCRAG_WH;
+USE WAREHOUSE DOCRAG_IHCHO_WH;
 USE SCHEMA DOCRAG_DB.RAW;
 
 -- ==============================================================================

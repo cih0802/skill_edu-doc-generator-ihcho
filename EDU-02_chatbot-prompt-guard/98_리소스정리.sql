@@ -54,7 +54,7 @@ next: 96_실습후_대조.md
 -- |------|-----------------------------------------------|-------------------------------|
 -- | 1    | OPS.TASK_INGEST_NEW_DOCUMENTS (Serverless)    | 5분마다 조건 평가 → 서버리스 크레딧 |
 -- | 2    | SERVING.KSM_HQ_SEARCH_SERVICE                 | 서빙 스토리지 + 인덱스 갱신 컴퓨트 |
--- | 3    | KSM_CHATBOT_WH                                | 쿼리 실행 시 컴퓨트 크레딧     |
+-- | 3    | KSM_CHATBOT_IHCHO_WH                                | 쿼리 실행 시 컴퓨트 크레딧     |
 -- | 4    | BRONZE.DOC_STAGE 의 업로드 파일               | 스토리지                       |
 -- | 5    | SILVER.DOCUMENT_CHUNKS                        | 스토리지                       |
 --
@@ -84,7 +84,7 @@ next: 96_실습후_대조.md
 -- ── 옵션 A: 일시 중단 (실습 계속 예정) ──────────────────────────────────────
 -- USE ROLE KSM_CHATBOT_ADMIN_ROLE;
 -- ALTER TASK IF EXISTS KSM_CHATBOT_DB.OPS.TASK_INGEST_NEW_DOCUMENTS SUSPEND;
--- ALTER WAREHOUSE IF EXISTS KSM_CHATBOT_WH SUSPEND;
+-- ALTER WAREHOUSE IF EXISTS KSM_CHATBOT_IHCHO_WH SUSPEND;
 -- ALTER CORTEX SEARCH SERVICE KSM_CHATBOT_DB.SERVING.KSM_HQ_SEARCH_SERVICE
 --     SET TARGET_LAG = '7 days';   -- 갱신 빈도를 낮춤
 --
@@ -240,7 +240,8 @@ SHOW CORTEX SEARCH SERVICES IN ACCOUNT;
 -- DROP DATABASE IF EXISTS KSM_CHATBOT_DB;
 
 -- ── ⑤ Warehouse 삭제 ───────────────────────────────────────────────────────
--- DROP WAREHOUSE IF EXISTS KSM_CHATBOT_WH;
+-- DROP WAREHOUSE IF EXISTS KSM_CHATBOT_IHCHO_WH;
+-- DROP WAREHOUSE IF EXISTS KSM_CHATBOT_WH;         -- 구 버전 이름 — 이전 버전으로 실습했다면 남아 있을 수 있습니다
 --
 --   ⚠️ 실패 시 확인: 다른 세션이 이 웨어하우스를 쓰고 있으면 실패할 수 있습니다.
 --      SHOW WAREHOUSES 로 running / queued 가 0인지 확인하십시오.
@@ -351,7 +352,7 @@ SHOW ROLES;        --   실습 후 목록이 실습 전과 같은가: ☐ 예  �
 --
 --   ☐ **OPS.TASK_INGEST_NEW_DOCUMENTS 삭제 (또는 SUSPEND)**   ← 서버리스 크레딧
 --   ☐ **SERVING.KSM_HQ_SEARCH_SERVICE 삭제**                   ← 서빙 스토리지 + 컴퓨트
---   ☐ **KSM_CHATBOT_WH 삭제 (또는 SUSPEND)**                   ← 컴퓨트 크레딧
+--   ☐ **KSM_CHATBOT_IHCHO_WH 삭제 (또는 SUSPEND)**                   ← 컴퓨트 크레딧
 --   ☐ **BRONZE.DOC_STAGE 업로드 파일 삭제**                     ← 스토리지
 --   ☐ **SILVER.DOCUMENT_CHUNKS 삭제**                          ← 스토리지
 --   ☐ OPS.INGEST_EVENT_LOG 삭제

@@ -42,7 +42,7 @@ next: 08_RAG_질의응답_및_캐시.sql
 --   · 모델을 나중에 바꾸면 전체 재임베딩(재과금)이 필요합니다. 처음에 정하십시오.
 
 USE ROLE DOCRAG_ADMIN_RL;
-USE WAREHOUSE DOCRAG_WH;
+USE WAREHOUSE DOCRAG_IHCHO_WH;
 USE SCHEMA DOCRAG_DB.SERVING;
 
 -- ==============================================================================
@@ -88,7 +88,7 @@ SELECT COUNT(*) - COUNT(DISTINCT CHUNK_ID) AS DUP_CHUNK_ID FROM V_SEARCH_SOURCE;
 CREATE CORTEX SEARCH SERVICE IF NOT EXISTS DOC_SEARCH_SVC
     ON CHUNK_TEXT
     ATTRIBUTES FILE_PATH, SECTION, DOC_FOLDER, CHUNK_ID, DOC_TITLE
-    WAREHOUSE       = DOCRAG_WH
+    WAREHOUSE       = DOCRAG_IHCHO_WH
     TARGET_LAG      = '1 day'
     EMBEDDING_MODEL = 'snowflake-arctic-embed-l-v2.0'
     AUTO_SUSPEND    = 1800

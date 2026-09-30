@@ -37,7 +37,7 @@ next: 98_리소스정리.sql
 -- ==============================================================================
 
 USE ROLE ACCOUNTADMIN;
-USE WAREHOUSE KSM_AUTH_WH;
+USE WAREHOUSE KSM_AUTH_IHCHO_WH;
 USE DATABASE KSM_ENTERPRISE_DB;
 USE SCHEMA BRONZE;
 

@@ -24,7 +24,7 @@ next: 10_부록_MySQL_차이점.md
 -- =============================================================
 -- Ingestion Type = full 이므로 커넥터는 먼저 초기 전량(스냅샷)을 적재합니다.
 USE ROLE OPENFLOW_EDU_DE_RL;
-USE WAREHOUSE OPENFLOW_EDU_WH;
+USE WAREHOUSE OPENFLOW_EDU_IHCHO_WH;
 
 -- 1-1. 대상 스키마가 자동 생성되었는지 확인
 -- 커넥터가 소스 스키마 이름(public)으로 Snowflake 스키마를 만듭니다.
@@ -79,7 +79,7 @@ LIMIT 30;
 -- ⚠️ 아래 블록은 **소스 PostgreSQL** 에서 실행합니다 (psql 등).
 -- -------------------------------------------------------------
 -- INSERT INTO public.customers (customer_id, customer_name, email, grade)
--- VALUES (4, '최지우', 'jiwoo@example.com', 'GOLD');
+-- VALUES (4, 'ihcho', 'ihcho@example.com', 'GOLD');
 --
 -- INSERT INTO public.orders (order_id, customer_id, product_name, amount, order_status)
 -- VALUES (1004, 4, '마우스', 45000.00, 'NEW');
@@ -93,10 +93,10 @@ LIMIT 30;
 
 -- 2-1. Snowflake 에서 반영 확인
 USE ROLE OPENFLOW_EDU_DE_RL;
-USE WAREHOUSE OPENFLOW_EDU_WH;
+USE WAREHOUSE OPENFLOW_EDU_IHCHO_WH;
 
 SELECT * FROM CDC_LAB_PG_DB.PUBLIC.CUSTOMERS ORDER BY CUSTOMER_ID;
--- 기대: CUSTOMER_ID = 4, '최지우' 행이 나타남
+-- 기대: CUSTOMER_ID = 4, 'ihcho' 행이 나타남
 
 SELECT COUNT(*) AS customers_cnt FROM CDC_LAB_PG_DB.PUBLIC.CUSTOMERS;  -- 4
 SELECT COUNT(*) AS orders_cnt    FROM CDC_LAB_PG_DB.PUBLIC.ORDERS;     -- 4
@@ -106,7 +106,7 @@ SELECT COUNT(*) AS orders_cnt    FROM CDC_LAB_PG_DB.PUBLIC.ORDERS;     -- 4
 --        DESCRIBE OPENFLOW CONNECTOR
 --          OPENFLOW_EDU_DB.OPENFLOW_EDU_SCH.PG_CDC_CONNECTOR;   -- RUNNING?
 --    (b) 대상 테이블이 PUBLICATION 에 포함되어 있는지 (소스에서)
---        SELECT * FROM pg_publication_tables WHERE pubname = 'openflow_pub';
+--        SELECT * FROM pg_publication_tables WHERE pubname = 'openflow_ihcho_pub';
 --    (c) 복제 슬롯이 active 인지 (소스에서)
 --        SELECT slot_name, active, restart_lsn FROM pg_replication_slots;
 --    (d) Warehouse 가 재개 가능한지 — execute-as Role 에 OPERATE 가 있는가

@@ -41,7 +41,7 @@ next: 03_문서스테이지_및_디렉터리테이블.sql
 -- ==============================================================================
 --   객체 접두사      : KSM_CHATBOT_
 --   COMMENT 태그     : [chatbot-prompt-guard]
---   Warehouse        : KSM_CHATBOT_WH        (XSMALL / AUTO_SUSPEND 60초)
+--   Warehouse        : KSM_CHATBOT_IHCHO_WH        (XSMALL / AUTO_SUSPEND 60초)
 --   Database         : KSM_CHATBOT_DB
 --   Schemas          : BRONZE SILVER GOLD SERVING OPS SECURITY
 --   Admin Role       : KSM_CHATBOT_ADMIN_ROLE
@@ -200,14 +200,14 @@ SHOW ROLES      LIKE 'KSM_CHATBOT%';   -- 결과 없어야 정상
 -- 💰 지속 과금 객체입니다. 실습을 중단할 때는 반드시 SUSPEND 하거나 98_ 로 삭제하십시오.
 -- IF NOT EXISTS: 재실행해도 기존 웨어하우스와 그 설정을 파괴하지 않습니다.
 
-CREATE WAREHOUSE IF NOT EXISTS KSM_CHATBOT_WH
+CREATE WAREHOUSE IF NOT EXISTS KSM_CHATBOT_IHCHO_WH
     WAREHOUSE_SIZE = 'XSMALL'
     AUTO_SUSPEND = 60
     AUTO_RESUME = TRUE
     INITIALLY_SUSPENDED = TRUE
     COMMENT = 'KSM HQ 챗봇 파이프라인 및 서비스용 웨어하우스. 실습용. [chatbot-prompt-guard]';
 
-USE WAREHOUSE KSM_CHATBOT_WH;
+USE WAREHOUSE KSM_CHATBOT_IHCHO_WH;
 
 
 -- ##############################################################################
@@ -275,7 +275,7 @@ GRANT OWNERSHIP ON DATABASE KSM_CHATBOT_DB
 GRANT OWNERSHIP ON ALL SCHEMAS IN DATABASE KSM_CHATBOT_DB
     TO ROLE KSM_CHATBOT_ADMIN_ROLE COPY CURRENT GRANTS;
 
-GRANT OWNERSHIP ON WAREHOUSE KSM_CHATBOT_WH
+GRANT OWNERSHIP ON WAREHOUSE KSM_CHATBOT_IHCHO_WH
     TO ROLE KSM_CHATBOT_ADMIN_ROLE COPY CURRENT GRANTS;
 
 
@@ -284,7 +284,7 @@ GRANT OWNERSHIP ON WAREHOUSE KSM_CHATBOT_WH
 -- ##############################################################################
 
 -- 7.1 웨어하우스
-GRANT USAGE ON WAREHOUSE KSM_CHATBOT_WH TO ROLE KSM_CHATBOT_USER_ROLE;
+GRANT USAGE ON WAREHOUSE KSM_CHATBOT_IHCHO_WH TO ROLE KSM_CHATBOT_USER_ROLE;
 
 -- 7.2 Cortex AI 함수 실행 권한 (SNOWFLAKE.CORTEX_USER 데이터베이스 롤)
 --     ⚠️ 이 부여는 SNOWFLAKE 데이터베이스의 롤을 실습 Role 에 주는 것입니다.
@@ -307,7 +307,7 @@ GRANT USAGE ON SCHEMA   KSM_CHATBOT_DB.SERVING  TO ROLE KSM_CHATBOT_USER_ROLE;
 -- [8] 구성 검증
 -- ##############################################################################
 USE ROLE KSM_CHATBOT_ADMIN_ROLE;
-USE WAREHOUSE KSM_CHATBOT_WH;
+USE WAREHOUSE KSM_CHATBOT_IHCHO_WH;
 USE DATABASE KSM_CHATBOT_DB;
 
 -- 8.1 스키마 6개가 모두 있는지
@@ -336,10 +336,10 @@ SHOW GRANTS TO ROLE KSM_CHATBOT_ADMIN_ROLE;
 --
 -- USE ROLE ACCOUNTADMIN;
 -- DROP DATABASE  IF EXISTS KSM_CHATBOT_DB;
--- DROP WAREHOUSE IF EXISTS KSM_CHATBOT_WH;
+-- DROP WAREHOUSE IF EXISTS KSM_CHATBOT_IHCHO_WH;
 -- DROP ROLE      IF EXISTS KSM_CHATBOT_USER_ROLE;
 -- DROP ROLE      IF EXISTS KSM_CHATBOT_ADMIN_ROLE;   -- Role 은 가장 마지막
 -- UNSET V_EXEC_USER;
 --
 -- 💰 비용만 멈추고 실습을 이어서 하려면 삭제하지 말고 아래만 실행하십시오.
--- ALTER WAREHOUSE KSM_CHATBOT_WH SUSPEND;
+-- ALTER WAREHOUSE KSM_CHATBOT_IHCHO_WH SUSPEND;

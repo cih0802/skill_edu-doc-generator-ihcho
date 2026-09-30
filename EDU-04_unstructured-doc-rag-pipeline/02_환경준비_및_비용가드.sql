@@ -18,7 +18,7 @@ next: 03_스테이지_및_증분감지.sql
 -- ==============================================================================
 -- ⚙️ 설정값 (이 문서에서 쓰는 이름. 바꾸면 98_ 도 같이 바꾸십시오)
 --   Role              : DOCRAG_ADMIN_RL
---   Warehouse         : DOCRAG_WH   (XSMALL, AUTO_SUSPEND 60초, 초기 중지 상태)
+--   Warehouse         : DOCRAG_IHCHO_WH   (XSMALL, AUTO_SUSPEND 60초, 초기 중지 상태)
 --   Resource Monitor  : DOCRAG_RM   (월 3 크레딧, 90% 알림 / 100% 중지)
 --   Database          : DOCRAG_DB   (스키마 RAW / CURATED / SERVING)
 --   공통 태그         : [unstructured-doc-rag-pipeline]
@@ -105,7 +105,7 @@ GRANT EXECUTE TASK ON ACCOUNT TO ROLE DOCRAG_ADMIN_RL;
 --   실제로 generation=2, enable_query_acceleration=true 로 생성되었습니다.
 --   이 실습은 소량 문서 + 무거운 연산 대부분이 서버리스 AI 함수라 Gen2/QAS 이점이 작습니다.
 --   Gen1/Gen2 요율은 Snowflake Service Consumption Table 에서 확인하십시오.
-CREATE WAREHOUSE IF NOT EXISTS DOCRAG_WH
+CREATE WAREHOUSE IF NOT EXISTS DOCRAG_IHCHO_WH
     WAREHOUSE_SIZE      = 'XSMALL'
     GENERATION          = '1'
     ENABLE_QUERY_ACCELERATION = FALSE
@@ -125,9 +125,9 @@ CREATE RESOURCE MONITOR IF NOT EXISTS DOCRAG_RM
              ON 100 PERCENT DO SUSPEND;
 
 -- 이 실습 WH 에만 연결합니다. (계정 전체 모니터가 아닙니다)
-ALTER WAREHOUSE DOCRAG_WH SET RESOURCE_MONITOR = DOCRAG_RM;
+ALTER WAREHOUSE DOCRAG_IHCHO_WH SET RESOURCE_MONITOR = DOCRAG_RM;
 
-GRANT USAGE, OPERATE ON WAREHOUSE DOCRAG_WH TO ROLE DOCRAG_ADMIN_RL;
+GRANT USAGE, OPERATE ON WAREHOUSE DOCRAG_IHCHO_WH TO ROLE DOCRAG_ADMIN_RL;
 
 -- ==============================================================================
 -- [3] Database — ACCOUNTADMIN 이 소유하고, 실습 역할에는 스키마 생성 권한만 줍니다
@@ -145,7 +145,7 @@ GRANT USAGE, CREATE SCHEMA ON DATABASE DOCRAG_DB TO ROLE DOCRAG_ADMIN_RL;
 --   SERVING : 검색 서비스·RAG 프로시저·답변 캐시·평가
 -- ==============================================================================
 USE ROLE DOCRAG_ADMIN_RL;
-USE WAREHOUSE DOCRAG_WH;
+USE WAREHOUSE DOCRAG_IHCHO_WH;
 
 CREATE SCHEMA IF NOT EXISTS DOCRAG_DB.RAW
     COMMENT = '원본 문서 스테이지. [unstructured-doc-rag-pipeline]';
@@ -158,7 +158,7 @@ CREATE SCHEMA IF NOT EXISTS DOCRAG_DB.SERVING
 -- [5] 확인 — 결과로 단정합니다
 -- ==============================================================================
 SHOW SCHEMAS IN DATABASE DOCRAG_DB;              -- RAW / CURATED / SERVING 이 보여야 합니다
-SHOW WAREHOUSES LIKE 'DOCRAG_WH';                -- size = X-Small, auto_suspend = 60, resource_monitor = DOCRAG_RM,
+SHOW WAREHOUSES LIKE 'DOCRAG_IHCHO_WH';                -- size = X-Small, auto_suspend = 60, resource_monitor = DOCRAG_RM,
                                                  -- generation = 1, enable_query_acceleration = false
 SELECT AI_COMPLETE('claude-haiku-4-5', '한 단어로만 답하세요: 준비 완료?') AS SMOKE_TEST;
 --   ↑ 권한·모델 접근 확인용 1회 호출 (소량 토큰 과금). 오류가 나면 [0.5] 게이트를 다시 보십시오.
@@ -168,6 +168,6 @@ SELECT AI_COMPLETE('claude-haiku-4-5', '한 단어로만 답하세요: 준비 �
 -- ==============================================================================
 -- USE ROLE ACCOUNTADMIN;
 -- DROP DATABASE IF EXISTS DOCRAG_DB;
--- DROP WAREHOUSE IF EXISTS DOCRAG_WH;
+-- DROP WAREHOUSE IF EXISTS DOCRAG_IHCHO_WH;
 -- DROP RESOURCE MONITOR IF EXISTS DOCRAG_RM;
 -- DROP ROLE IF EXISTS DOCRAG_ADMIN_RL;
