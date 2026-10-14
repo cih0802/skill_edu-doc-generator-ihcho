@@ -8,18 +8,24 @@ next: 04_아이스버그_테이블생성_및_데이터적재.sql
 */
 
 -- ----------------------------------------------------------------------------
+-- 검증 상태 (2026-10-14, 2차 개선 후 완주 실행)
+--   ✅ [1] ICB_STORAGE_MODEL_DEMO 생성·적재·조회, [3] SHOW EXTERNAL VOLUMES — 실제 실행
+--   ⚠️ [2] External Volume 템플릿 A/B — 외부 S3 버킷·IAM 역할이 없어 미실행. 문법은 공식 문서 대조
+-- ----------------------------------------------------------------------------
+
+-- ----------------------------------------------------------------------------
 -- [0. 스토리지 관리 모델 핵심 비교]
 --
 -- Snowflake에서 Iceberg 테이블을 운용하는 방식은 크게 2가지입니다:
 --
--- 1. Snowflake-Managed Storage (기본 권장, GA)
---    - 별도의 AWS S3 / Azure Blob / GCS 버킷 및 IAM 설정 없이 즉시 생성
---    - Snowflake 내부 암호화 스토리지에 Apache Iceberg 오픈 포맷(Parquet+Metadata)으로 자동 관리
---    - 스토리지 관리 부담 0, 최고의 성능 및 Snowflake Horizon 거버넌스 자동 적용
+-- 1. Snowflake storage (EXTERNAL_VOLUME 생략 = SNOWFLAKE_MANAGED)
+--    - 별도의 S3 / Azure Blob 버킷 및 IAM 설정 없이 생성 (AWS·Azure 리전 한정, Gov·중국 리전 불가)
+--    - Snowflake 가 Iceberg 데이터·메타데이터 파일을 관리하며, 스토리지 요금은 Snowflake 가 청구
+--    - 외부 엔진은 파일 경로가 아니라 Horizon Iceberg REST Catalog 를 통해 접근 (10_ 참고)
 --
 -- 2. Customer-Managed Storage (External Volume 기반)
 --    - 고객사의 자체 S3/GCS/Azure 오브젝트 스토리지에 데이터 및 메타데이터를 저장
---    - STORAGE INTEGRATION 또는 EXTERNAL VOLUME 을 생성하여 IAM 신뢰 관계 수립
+--    - EXTERNAL VOLUME 을 생성하여 IAM 신뢰 관계 수립 (Iceberg 테이블은 STORAGE INTEGRATION 을 쓰지 않음)
 --    - 타 엔진(Spark, Trino, Flink 등)이 고객사 버킷에서 직접 파일 접근 가능
 -- ----------------------------------------------------------------------------
 
@@ -60,7 +66,7 @@ SELECT * FROM ICB_STORAGE_MODEL_DEMO;
 -- [참고 템플릿 A: AWS S3 External Volume 생성 (ACCOUNTADMIN 필요)]
 USE ROLE ACCOUNTADMIN;
 
-CREATE OR REPLACE EXTERNAL VOLUME VOL_S3_ICEBERG_STORAGE
+CREATE EXTERNAL VOLUME IF NOT EXISTS VOL_S3_ICEBERG_STORAGE
     STORAGE_LOCATIONS =
     (
         (
@@ -105,6 +111,11 @@ SHOW EXTERNAL VOLUMES;
 
 -- ----------------------------------------------------------------------------
 -- [4. 본 실습의 진행 방식]
--- 본 가이드(EDU-05)의 모든 후속 실습(04~10)은 **Snowflake-Managed Storage**를 기본으로 진행하여,
--- 추가 클라우드 과금이나 외부 IAM 세팅 없이도 트라이얼 및 모든 에디션에서 100% 동일하게 완주할 수 있습니다.
+-- 본 가이드(EDU-05)의 후속 실습(04~10)은 Snowflake storage 를 기본으로 진행하므로
+-- 외부 IAM 설정이 필요 없습니다. 02_ [0] 리전 게이트가 PASS 인 계정이 전제입니다.
+-- (2026-10-14 트라이얼 계정 AWS_AP_NORTHEAST_1 에서 04~10 실행 확인)
+-- ----------------------------------------------------------------------------
+
+-- ----------------------------------------------------------------------------
+-- 🧹 이 단계까지의 정리: ICB_STORAGE_MODEL_DEMO 는 98_ C-2(DB 삭제)로 함께 삭제됩니다
 -- ----------------------------------------------------------------------------

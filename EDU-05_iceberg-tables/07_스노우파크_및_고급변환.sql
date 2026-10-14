@@ -8,6 +8,12 @@ next: 08_데이터거버넌스_보안정책.sql
 */
 
 -- ----------------------------------------------------------------------------
+-- 검증 상태 (2026-10-14, 2차 개선 후 완주 실행)
+--   ✅ Iceberg 대상 테이블 생성, Python 프로시저 생성·CALL, 결과 행 수/상태 분포 별도 쿼리 — 실제 실행
+--   💡 프로시저 반환 문자열 "SUCCESS" 는 근거가 아닙니다. 아래 [3] 의 건수 쿼리로 판정합니다
+-- ----------------------------------------------------------------------------
+
+-- ----------------------------------------------------------------------------
 -- [0. 실습 개요 및 Snowpark + Iceberg 결합의 이점]
 --
 -- Snowpark Python은 Python의 강력한 표현력을 유지하면서,
@@ -87,6 +93,15 @@ $$;
 -- ----------------------------------------------------------------------------
 CALL SP_TRANSFORM_ICEBERG_TELEMETRY();
 
+-- 판정 쿼리: 원천 조인 건수와 적재 건수가 같아야 합니다 (기대: 둘 다 11)
+-- ⚠️ mode("append") 이므로 CALL 을 다시 실행하면 행이 중복됩니다. 재실행 전 TRUNCATE 하십시오
+SELECT
+    (SELECT COUNT(*) FROM ICEBERG_LAB_DB.RAW.ICB_SENSOR_READINGS s
+       JOIN ICEBERG_LAB_DB.RAW.ICB_VEHICLE_REGISTRY v ON s.VEHICLE_ID = v.VEHICLE_ID) AS SOURCE_ROWS,
+    (SELECT COUNT(*) FROM ICB_SNOWPARK_ENRICHED) AS LOADED_ROWS;
+
+SELECT HEALTH_STATUS, COUNT(*) AS N FROM ICB_SNOWPARK_ENRICHED GROUP BY HEALTH_STATUS ORDER BY HEALTH_STATUS;
+
 -- 저장된 Iceberg 테이블 데이터 확인
 SELECT 
     READING_ID,
@@ -97,3 +112,7 @@ SELECT
     ENGINE_TEMP_C
 FROM ICB_SNOWPARK_ENRICHED
 ORDER BY RECORDED_AT;
+
+-- ----------------------------------------------------------------------------
+-- 🧹 이 단계까지의 정리: 프로시저·ICB_SNOWPARK_ENRICHED 는 98_ C-2(DB 삭제)로 함께 삭제됩니다
+-- ----------------------------------------------------------------------------

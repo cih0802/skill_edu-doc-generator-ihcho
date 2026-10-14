@@ -7,6 +7,10 @@ requires: [03_온톨로지_데이터모델_구축.sql]
 next: [05_재귀CTE_그래프순회_프로시저.sql]
 */
 
+-- 검증 상태 (2026-10-14, 2차 개선 후 완주 실행)
+--   ✅ SCREENING_VIABILITY 12행 적재, V_CELL_LINE_SUMMARY 10행 — 실제 실행
+--   💡 수치는 실습용 합성 데이터입니다. 실제 PRISM 측정값이 아닙니다
+
 -- 세션 컨텍스트 확인
 USE ROLE EDU06_IHCHO_ONTOLOGY_ROLE;
 USE WAREHOUSE EDU06_IHCHO_ONTOLOGY_WH;
@@ -69,3 +73,7 @@ GROUP BY PRIMARY_TISSUE, DRUG_NAME, TARGET_PATHWAY;
 
 SELECT * FROM EDU06_IHCHO_ONTOLOGY_DB.PUBLIC.V_CELL_LINE_SUMMARY
 ORDER BY PRIMARY_TISSUE, AVG_VIABILITY_SCORE;
+
+-- ============================================================================
+-- 🧹 이 단계까지의 정리: 98_ PART A(DB 삭제)로 함께 삭제됩니다
+-- ============================================================================

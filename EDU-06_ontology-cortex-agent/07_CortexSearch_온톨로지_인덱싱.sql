@@ -7,6 +7,12 @@ requires: [06_Flattened_GraphRAG_프로파일_생성.sql]
 next: [08_온톨로지_그라운딩_CortexAgent_구현.sql]
 */
 
+-- 검증 상태 (2026-10-14, 2차 개선 후 완주 실행)
+--   ✅ CREATE CORTEX SEARCH SERVICE, SHOW/DESCRIBE, SEARCH_PREVIEW — 실제 실행
+--   ✅ 유의어 질의 "flat epithelial …" 의 1순위 결과 NODE_ID 확인 — 실제 실행 (아래 [3.1])
+--   ⚠️ TARGET_LAG '1 hour' 자동 재인덱싱은 시간 경과가 필요해 관찰하지 않았습니다
+--   💡 임베딩 모델은 지정하지 않아 기본값을 씁니다. 실제 모델은 DESCRIBE 결과의 embedding_model 열로 확인합니다
+
 -- 세션 컨텍스트 확인
 USE ROLE EDU06_IHCHO_ONTOLOGY_ROLE;
 USE WAREHOUSE EDU06_IHCHO_ONTOLOGY_WH;
@@ -60,3 +66,19 @@ SELECT
             "limit": 3
         }'
     ) AS SEARCH_RESULTS;
+
+-- [3.1] 판정 쿼리: 1순위 결과가 CL:0000076 (squamous epithelial cell) 인가
+--       질의어에 "squamous" 가 없어도 유의어 "flat epithelial" 로 찾아야 합니다
+SELECT r.value:NODE_ID::VARCHAR AS NODE_ID, r.value:CONCEPT_NAME::VARCHAR AS CONCEPT_NAME, r.index AS RANK0
+FROM (SELECT PARSE_JSON(SNOWFLAKE.CORTEX.SEARCH_PREVIEW(
+        'EDU06_IHCHO_ONTOLOGY_DB.PUBLIC.ONTOLOGY_SEARCH_SERVICE',
+        '{"query": "flat epithelial cell lining and associated tissues", "columns": ["NODE_ID", "CONCEPT_NAME"], "limit": 3}'
+     )) AS J) s,
+     LATERAL FLATTEN(input => s.J:results) r
+ORDER BY r.index;
+
+-- ============================================================================
+-- 🧹 이 단계까지의 정리
+--   💰 Cortex Search 는 서빙 중 비용이 발생합니다. 일시 중단: ALTER CORTEX SEARCH SERVICE … SUSPEND SERVING
+--   삭제: 98_ PART A
+-- ============================================================================

@@ -4,17 +4,17 @@
 
 | 번호 | 파일 | 제목 | 유형 | 요약 |
 |:---:|------|------|:---:|------|
-| 01 | `01_교육자료_정리본.md` | 교육자료 정리본 — Apache Iceberg 테이블 종합 실습 가이드 | md | Snowflake에서 Apache Iceberg 테이블을 완벽하게 활용하기 위한 가이드. Snowflake-Managed 스토리지와 Customer-Managed External Volume 비교, 정형·반정형 데이터 적재, 메타데이터 및 타임트래블 분석, Dynamic Iceberg Tables 파이프라인, Snowpark 변환, 행/열 레벨 보안 거버넌스, Secure Data Sharing, Horizon Catalog 기반 외부 엔진(DuckDB/Spark) 및 Semantic View 연동을 다룹니다. |
-| 02 | `02_사전준비_및_환경설정.sql` | 사전 준비 및 환경 설정 | sql | Iceberg 실습을 위한 전용 관리자/분석가 역할, 웨어하우스, 데이터베이스, 스키마 및 파일 스테이지를 생성하고 사전 상태 스냅샷을 기록합니다. |
+| 01 | `01_교육자료_정리본.md` | 교육자료 정리본 — Apache Iceberg 테이블 종합 실습 가이드 | md | Snowflake 에서 Apache Iceberg 테이블을 다루는 종합 실습. Snowflake storage 와 Customer-Managed External Volume 비교, 정형·반정형(v3 VARIANT) 적재, 메타데이터 파일 버전 분석과 Time Travel, Dynamic Iceberg Table 증분 파이프라인, Snowpark 변환, 행/열 보안, Secure Data Sharing, Semantic View, Horizon Iceberg REST Catalog 기반 외부 엔진 연동을 다룹니다. |
+| 02 | `02_사전준비_및_환경설정.sql` | 사전 준비 및 환경 설정 | sql | 리전 게이트와 이름 충돌 게이트를 통과한 뒤, Iceberg 실습 전용 관리자/분석가 역할, 웨어하우스, 데이터베이스, 스키마를 생성하고 사전 상태 스냅샷을 기록합니다. |
 | 03 | `03_스토리지모델_비교_및_외부볼륨구성.sql` | 스토리지 모델 비교 및 외부 볼륨 구성 | sql | Snowflake-Managed Iceberg 스토리지와 Customer-Managed External Volume 스토리지 모델의 차이점을 분석하고, External Volume 및 Storage Integration 아키텍처와 생성 문법을 학습합니다. |
 | 04 | `04_아이스버그_테이블생성_및_데이터적재.sql` | 아이스버그 테이블 생성 및 데이터 적재 | sql | 정형 마스터 데이터, 시계열 IoT 센서 데이터, 반정형 JSON 정비 로그를 위한 Iceberg 테이블을 생성하고 원천 데이터를 적재 및 검증합니다. |
-| 05 | `05_아이스버그_타임트래블_및_메타데이터분석.sql` | 아이스버그 타임트래블 및 메타데이터 분석 | sql | Apache Iceberg의 스냅샷 히스토리, 메타데이터 계층 구조(Metadata -> Manifest List -> Manifest -> Data Parquet)를 분석하고 Snowflake Time Travel 기능을 실습합니다. |
-| 06 | `06_다이나믹_아이스버그_테이블_파이프라인.sql` | 다이나믹 아이스버그 테이블 파이프라인 | sql | Iceberg 원천 테이블을 기반으로 2단계 다이나믹 테이블(Silver Tier 엔리치먼트 -> Gold Tier 일별 플릿 집계) 증분 파이프라인을 구축하고 자동 갱신을 실습합니다. |
+| 05 | `05_아이스버그_타임트래블_및_메타데이터분석.sql` | 아이스버그 타임트래블 및 메타데이터 분석 | sql | DML 전후 Iceberg 메타데이터 파일(metadata.json) 버전 변화를 SYSTEM$GET_ICEBERG_TABLE_INFORMATION 으로 직접 비교하고, 저장한 시점 기준 Time Travel(AT TIMESTAMP)과 스키마 진화를 실습합니다. |
+| 06 | `06_다이나믹_아이스버그_테이블_파이프라인.sql` | 다이나믹 아이스버그 테이블 파이프라인 | sql | Iceberg 원천 테이블을 기반으로 2단계 Dynamic Iceberg Table(Silver 엔리치먼트 -> Gold 일별 플릿 집계) 증분 파이프라인을 구축하고, 신규 데이터 인입 후 INCREMENTAL 갱신이 일어나는지 갱신 이력으로 확인합니다. |
 | 07 | `07_스노우파크_및_고급변환.sql` | 스노우파크 및 고급 변환 | sql | Snowpark Python DataFrame API를 활용하여 Iceberg 원천 테이블의 데이터를 프로그래밍 방식으로 조인, 정제 및 이상 징후 판별 로직을 적용하여 Iceberg 타깃 테이블에 적재합니다. |
 | 08 | `08_데이터거버넌스_보안정책.sql` | 데이터 거버넌스 및 보안 정책 | sql | Snowflake Horizon 거버넌스 기능을 Iceberg 테이블에 직접 적용하여 차대번호(VIN) 동적 데이터 마스킹(CLS) 및 지역별 행 접근 제어(RLS)를 구성하고 역할별 접근 결과를 검증합니다. |
 | 09 | `09_데이터공유_및_협업.sql` | 데이터 공유 및 협업 | sql | Iceberg 테이블을 기반으로 비즈니스 로직을 보호하는 Secure View를 정의하고, Snowflake Data Sharing을 통해 외부 계정과 실시간 무복제 공유를 구성합니다. |
-| 10 | `10_외부엔진연동_및_의미론적계층.sql` | 외부 엔진 연동 및 의미론적 계층 | sql | Snowflake Horizon Catalog를 통해 Iceberg 메타데이터를 외부 쿼리 엔진(DuckDB, Apache Spark)에서 직접 질의하는 방법과 Cortex AI / BI 연동을 위한 시맨틱 뷰 계층을 구성합니다. |
-| 98 | `98_리소스정리.sql` | 리소스 정리 (Teardown) | sql | 실습에서 생성된 모든 역할, 웨어하우스, 데이터베이스, 스키마, 아이스버그 테이블, 다이나믹 테이블, 정책, 쉐어를 역순으로 정리하고 2회 재실행 안전 방어 블록 및 잔여물 검증 쿼리를 수행합니다. |
+| 10 | `10_외부엔진연동_및_의미론적계층.sql` | 외부 엔진 연동 및 의미론적 계층 | sql | Iceberg 테이블 위에 실제 Semantic View(CREATE SEMANTIC VIEW)를 정의해 SEMANTIC_VIEW() 로 질의하고, 외부 엔진(Spark/PyIceberg/DuckDB)이 Horizon Iceberg REST Catalog 를 통해 같은 테이블에 접근하는 구성을 학습합니다. |
+| 98 | `98_리소스정리.sql` | 리소스 정리 (Teardown) | sql | 실습에서 생성된 Share, 데이터베이스(테이블·Dynamic Iceberg Table·프로시저·정책·Semantic View 포함), 웨어하우스, 역할을 역순으로 정리하고, 2회 재실행 안전 방어 블록과 사전 스냅샷 대조 쿼리로 잔여물 0 을 확인합니다. |
 | 99 | `99_generate_index.py` | 인덱스 생성 스크립트 | python | 폴더 내 문서의 최상단 메타 주석을 파싱해 00_index.md를 재생성한다. _archive/ 는 제외하며 메타 주석 누락과 requires/next 체인 불일치를 경고한다. 재실행 시 항상 덮어쓴다(멱등). |
 
 ## 실습 진행 순서

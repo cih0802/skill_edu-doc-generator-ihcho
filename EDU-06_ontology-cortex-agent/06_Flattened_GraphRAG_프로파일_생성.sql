@@ -7,6 +7,11 @@ requires: [05_재귀CTE_그래프순회_프로시저.sql]
 next: [07_CortexSearch_온톨로지_인덱싱.sql]
 */
 
+-- 검증 상태 (2026-10-14, 2차 개선 후 완주 실행)
+--   ✅ KG_FLATTENED_PROFILES CTAS (14행), squamous epithelial cell 롤업 조직 4개 — 실제 실행
+--   💡 ALL_DESCENDANTS 는 PATH 가드 대신 DEPTH < 10 으로 재귀를 끊습니다. 순환이 있어도 종료되지만
+--      순환 구간이 반복 집계될 수 있으므로, 실제 온톨로지에서는 05_ [4.0] 방식의 PATH 가드를 권장합니다
+
 -- 세션 컨텍스트 확인
 USE ROLE EDU06_IHCHO_ONTOLOGY_ROLE;
 USE WAREHOUSE EDU06_IHCHO_ONTOLOGY_WH;
@@ -105,3 +110,12 @@ SELECT
 FROM EDU06_IHCHO_ONTOLOGY_DB.PUBLIC.KG_FLATTENED_PROFILES
 WHERE NODE_TYPE = 'CELL_TYPE'
 ORDER BY CONCEPT_NAME;
+
+-- 판정: squamous epithelial cell 은 자손(keratinocyte)의 skin 까지 롤업되어야 합니다
+-- 기대: bladder, esophagus, lung, skin
+SELECT AGGREGATED_TISSUES_STR FROM EDU06_IHCHO_ONTOLOGY_DB.PUBLIC.KG_FLATTENED_PROFILES
+WHERE CONCEPT_NAME = 'squamous epithelial cell';
+
+-- ============================================================================
+-- 🧹 이 단계까지의 정리: 98_ PART A(DB 삭제)로 함께 삭제됩니다
+-- ============================================================================

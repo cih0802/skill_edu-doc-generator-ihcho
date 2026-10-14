@@ -7,6 +7,10 @@ requires: [02_환경설정_및_스냅샷.sql]
 next: [04_비즈니스_실측데이터_적재.sql]
 */
 
+-- 검증 상태 (2026-10-14, 2차 개선 후 완주 실행)
+--   ✅ KG_NODE/KG_EDGE 생성·적재 — 실제 실행 (노드 CELL_TYPE 10 + TISSUE 4, 엣지 subClassOf 9 + locatedIn 5)
+--   💡 PRIMARY KEY / FOREIGN KEY 는 Snowflake 일반 테이블에서 강제되지 않습니다(메타데이터용). 무결성은 적재 시 직접 확인하십시오
+
 -- 세션 컨텍스트 확인
 USE ROLE EDU06_IHCHO_ONTOLOGY_ROLE;
 USE WAREHOUSE EDU06_IHCHO_ONTOLOGY_WH;
@@ -110,3 +114,7 @@ GROUP BY NODE_TYPE;
 SELECT EDGE_TYPE, COUNT(*) AS EDGE_COUNT 
 FROM EDU06_IHCHO_ONTOLOGY_DB.PUBLIC.KG_EDGE 
 GROUP BY EDGE_TYPE;
+
+-- ============================================================================
+-- 🧹 이 단계까지의 정리: 98_ PART A(DB 삭제)로 함께 삭제됩니다
+-- ============================================================================

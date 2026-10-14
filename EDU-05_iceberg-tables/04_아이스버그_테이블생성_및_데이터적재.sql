@@ -8,6 +8,12 @@ next: 05_아이스버그_타임트래블_및_메타데이터분석.sql
 */
 
 -- ----------------------------------------------------------------------------
+-- 검증 상태 (2026-10-14, 2차 개선 후 완주 실행)
+--   ✅ Iceberg 테이블 3종 생성(정비 로그는 ICEBERG_VERSION=3 + VARIANT), 적재, 건수·JSON 경로 질의,
+--      SYSTEM$GET_ICEBERG_TABLE_INFORMATION — 실제 실행
+-- ----------------------------------------------------------------------------
+
+-- ----------------------------------------------------------------------------
 -- [0. 실습 개요 및 스키마 설계]
 --
 -- 본 실습에서는 커넥티드 차량 및 물류 플릿(Fleet) 시나리오를 바탕으로
@@ -15,7 +21,7 @@ next: 05_아이스버그_타임트래블_및_메타데이터분석.sql
 --
 -- 1. ICB_VEHICLE_REGISTRY (정형 마스터) : 차량 고유 ID, 모델, 제조년도, 차대번호(VIN), 지역 코드
 -- 2. ICB_SENSOR_READINGS  (시계열 IoT) : 차량 ID, 타임스탬프, 속도, 배터리 잔량, 엔진 온도
--- 3. ICB_MAINTENANCE_LOGS (반정형 JSON) : 정비 내역 로그 (JSON 문자열 저장 후 PARSE_JSON 활용)
+-- 3. ICB_MAINTENANCE_LOGS (반정형 JSON) : 정비 내역 로그 (Iceberg v3 VARIANT 컬럼)
 --
 -- 💡 Iceberg 테이블 DDL 핵심 규칙:
 -- - 문자열 컬럼은 길이 제한(예: VARCHAR(50)) 대신 비모수 VARCHAR 또는 STRING 타입을 사용합니다.
@@ -55,12 +61,20 @@ CREATE OR REPLACE ICEBERG TABLE ICB_SENSOR_READINGS (
 );
 
 -- 1-3. 반정형 JSON 정비 이력 Iceberg 테이블
+--      VARIANT 는 Iceberg v3 데이터 타입입니다. Snowflake-managed Iceberg 테이블의 기본 버전은 v2 이므로
+--      ICEBERG_VERSION = 3 을 명시해야 VARIANT 컬럼을 만들 수 있습니다.
+--      ⚠️ v3 테이블은 v3 를 지원하지 않는 외부 엔진에서 읽을 수 없습니다 (공식 문서: Iceberg v3 support)
 CREATE OR REPLACE ICEBERG TABLE ICB_MAINTENANCE_LOGS (
     LOG_ID VARCHAR,
     VEHICLE_ID VARCHAR,
     MAINTENANCE_DATE DATE,
-    DETAILS VARCHAR
-);
+    DETAILS VARIANT
+)
+ICEBERG_VERSION = 3;
+
+-- 테이블별 Iceberg 포맷 버전 확인 (ICB_MAINTENANCE_LOGS 만 3)
+SHOW ICEBERG TABLES IN SCHEMA ICEBERG_LAB_DB.RAW
+    ->> SELECT "name", "iceberg_table_format_version" FROM $1 ORDER BY "name";
 
 -- ----------------------------------------------------------------------------
 -- [2. 데이터 적재 (Data Ingestion)]
@@ -87,27 +101,33 @@ VALUES
     ('R-007', 'VH-3001', '2026-10-14 07:00:00', 90.0, 70.0, 88.0, 54200.0),
     ('R-008', 'VH-3001', '2026-10-14 09:45:00', 88.5, 58.0, 91.5, 54410.2);
 
--- 2-3. 반정형 JSON 정비 로그 데이터 삽입
+-- 2-3. 반정형 JSON 정비 로그 데이터 삽입 (VARIANT 는 INSERT ... VALUES 에서 PARSE_JSON 을 쓸 수 없어 SELECT 형태로 적재)
 INSERT INTO ICB_MAINTENANCE_LOGS (LOG_ID, VEHICLE_ID, MAINTENANCE_DATE, DETAILS)
-VALUES
-    ('ML-101', 'VH-1001', '2026-09-10'::DATE, '{"service_type": "REGULAR_INSPECTION", "technician": "Kim Min-soo", "cost_krw": 250000, "diagnostics": {"battery_health_pct": 98.5}}'),
-    ('ML-102', 'VH-2002', '2026-10-01'::DATE, '{"service_type": "EMERGENCY_REPAIR", "technician": "Park Ji-hoon", "cost_krw": 480000, "diagnostics": {"battery_health_pct": 89.0}}');
+SELECT column1, column2, column3::DATE, PARSE_JSON(column4)
+FROM VALUES
+    ('ML-101', 'VH-1001', '2026-09-10', '{"service_type": "REGULAR_INSPECTION", "technician": "Kim Min-soo", "cost_krw": 250000, "diagnostics": {"battery_health_pct": 98.5}}'),
+    ('ML-102', 'VH-2002', '2026-10-01', '{"service_type": "EMERGENCY_REPAIR", "technician": "Park Ji-hoon", "cost_krw": 480000, "diagnostics": {"battery_health_pct": 89.0}}');
 
 -- ----------------------------------------------------------------------------
 -- [3. 적재 결과 검증 및 JSON 필드 질의]
+-- 기대 건수: 차량 5 / 센서 8 / 정비 2
 -- ----------------------------------------------------------------------------
+SELECT 'ICB_VEHICLE_REGISTRY' T, COUNT(*) N FROM ICB_VEHICLE_REGISTRY
+UNION ALL SELECT 'ICB_SENSOR_READINGS', COUNT(*) FROM ICB_SENSOR_READINGS
+UNION ALL SELECT 'ICB_MAINTENANCE_LOGS', COUNT(*) FROM ICB_MAINTENANCE_LOGS;
+
 SELECT * FROM ICB_VEHICLE_REGISTRY ORDER BY VEHICLE_ID;
 SELECT * FROM ICB_SENSOR_READINGS ORDER BY RECORDED_AT;
 
--- Iceberg 테이블의 JSON 문자열 필드를 PARSE_JSON으로 파싱하여 정형 컬럼처럼 질의
+-- VARIANT 컬럼은 PARSE_JSON 없이 경로 표기로 바로 질의합니다
 SELECT 
     LOG_ID,
     VEHICLE_ID,
     MAINTENANCE_DATE,
-    PARSE_JSON(DETAILS):service_type::VARCHAR AS SERVICE_TYPE,
-    PARSE_JSON(DETAILS):technician::VARCHAR AS TECHNICIAN,
-    PARSE_JSON(DETAILS):cost_krw::NUMBER AS COST_KRW,
-    PARSE_JSON(DETAILS):diagnostics.battery_health_pct::DOUBLE AS BATTERY_HEALTH_PCT
+    DETAILS:service_type::VARCHAR AS SERVICE_TYPE,
+    DETAILS:technician::VARCHAR AS TECHNICIAN,
+    DETAILS:cost_krw::NUMBER AS COST_KRW,
+    DETAILS:diagnostics.battery_health_pct::DOUBLE AS BATTERY_HEALTH_PCT
 FROM ICB_MAINTENANCE_LOGS;
 
 -- ----------------------------------------------------------------------------
@@ -119,3 +139,7 @@ SELECT
     PARSE_JSON(SYSTEM$GET_ICEBERG_TABLE_INFORMATION('ICB_VEHICLE_REGISTRY')) AS REGISTRY_ICEBERG_META,
     PARSE_JSON(SYSTEM$GET_ICEBERG_TABLE_INFORMATION('ICB_SENSOR_READINGS')) AS SENSOR_ICEBERG_META,
     PARSE_JSON(SYSTEM$GET_ICEBERG_TABLE_INFORMATION('ICB_MAINTENANCE_LOGS')) AS MAINTENANCE_ICEBERG_META;
+
+-- ----------------------------------------------------------------------------
+-- 🧹 이 단계까지의 정리: Iceberg 테이블 3종은 98_ C-2(DB 삭제)로 함께 삭제됩니다
+-- ----------------------------------------------------------------------------
